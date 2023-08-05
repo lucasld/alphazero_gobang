@@ -10,6 +10,8 @@ All core source code is contained within the `src/` directory, organized into sp
 
 #### `environment/`
 
+#### `mcts/`
+
 #### `model/`
 
 #### `training/`
