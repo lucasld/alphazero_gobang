@@ -7,8 +7,7 @@ import tensorflow as tf
 
 
 class AlphaZero:
-    def __init__(self, env, nnet, num_self_play, self_play_deque_length,
-                 max_example_number, win_threshold, mcts_config):
+    def __init__(self, env, nnet, alphazero_config, mcts_config):
         self.env = env
         self.nnet = nnet
 
@@ -18,14 +17,14 @@ class AlphaZero:
         # path where weights are saved
         self.mcts = MCTS(self.env, self.nnet, self.mcts_config)
         # number of self-play steps
-        self.num_self_play = num_self_play
+        self.num_self_play = alphazero_config["number self-play"]
         # max amount of train examples that are saved
-        self.max_self_play_examples = self_play_deque_length
+        self.max_self_play_examples = alphazero_config["self play deque length"]
         # example history
-        self.max_examples = max_example_number
+        self.max_examples = alphazero_config["max example number"]
         self.example_hist = []
         # threshold prob at which nnet will be chosen as new network
-        self.win_prob_threshold = win_threshold
+        self.win_prob_threshold = alphazero_config["pit win threshold"]
     
     def train(self, num_iter=1000):
         # repeat self-play-train self.num_iter times

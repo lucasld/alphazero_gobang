@@ -2,21 +2,29 @@ import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, Flatten, Dense
 from tensorflow.keras.models import Model
 import numpy as np
+import os
 
 
 class NeuralNetwork:
-    def __init__(self, weight_path, input_shape=(19, 19, 1), policy_shape=361,
-                 load_weights_path=False):
-        self.weight_path = weight_path
-        self.input_shape = input_shape
-        self.policy_shape = policy_shape
-        self.model = self.create_value_policy_network(input_shape,
-                                                      policy_shape)
+    def __init__(self, config, load_existing_model=False):
+        self.config = config
+        name = config["name"]
+        self.weight_path = config["neural network"]["weight path"] + name
+        self.input_shape = (config["game"]["height"],
+                            config["game"]["width"],
+                            1)
+        self.policy_shape = self.input_shape[0] * self.input_shape[1]
         # load existing weights into model if path is given
-        if load_weights_path:
+        model_path = f"{config['neural network']['model path']}{name}.keras"
+        if os.path.exists(model_path) and load_existing_model:
             print("Old model loaded")
             #self.model.load_weights(load_weights_path)
-            tf.keras.models.load_model(f"{weight_path}.keras")
+            self.model = tf.keras.models.load_model(model_path)
+        else:
+            print("Creating new model")
+            self.model = self.create_value_policy_network(self.input_shape,
+                                                          self.policy_shape)
+
 
 
     def create_value_policy_network(self, input_shape: tuple,
@@ -67,7 +75,7 @@ class NeuralNetwork:
 
     def clone_network(self):
         print(self.input_shape, self.policy_shape)
-        nnet = NeuralNetwork(self.weight_path, self.input_shape, self.policy_shape)
+        nnet = NeuralNetwork(self.config)
         nnet.model = tf.keras.models.clone_model(self.model)
         return nnet
     

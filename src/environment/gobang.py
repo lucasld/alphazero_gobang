@@ -29,10 +29,11 @@ class Environment:
     
     
     def execute_step(self, action):
-        self.env.step(action)
+        successful = self.env.step(action)
         self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
         # add action to action accumulator
         self.action_acc.append(action)
+        return successful
 
     
     def is_terminal(self):
@@ -73,10 +74,10 @@ class Environment:
             self.reset_env()
             i=0
             while not self.is_terminal():
-                pi, _ = agents[player].network(self.board)
-                #pi = agents[player].get_action_probs(pit_mode=True)
+                #pi, _ = agents[player].network(self.board)
+                pi = agents[player].get_action_probs(pit_mode=True)
                 mask = self.legal_actions
-                masked_pi = np.array(pi[0])
+                masked_pi = pi
                 masked_pi[mask==0] = 0
                 # take action with highest action value
                 action = np.argmax(masked_pi)
@@ -105,10 +106,10 @@ class Environment:
             self.reset_env()
             i=0
             while not self.is_terminal():
-                pi, _ = agents[player].network(self.board)
-                #pi = agents[player].get_action_probs(pit_mode=True)
+                #pi, _ = agents[player].network(self.board)
+                pi = agents[player].get_action_probs(pit_mode=True)
                 mask = self.legal_actions
-                masked_pi = np.array(pi[0])
+                masked_pi = pi
                 masked_pi[mask==0] = 0
                 # take action with highest action value
                 action = np.argmax(masked_pi)
@@ -188,7 +189,7 @@ class Environment:
             images.append(imageio.imread(buf))
 
         # Create GIF
-        imageio.mimsave(f'{env.config["images folder"]}/{name}.gif', images, duration=0.5)
+        imageio.mimsave(f'{env.config["images folder"]}{name}.gif', images, duration=0.5)
         plt.close()
 
 
