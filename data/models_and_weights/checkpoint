@@ -1,2 +1,2 @@
-model_checkpoint_path: "configuration2"
-all_model_checkpoint_paths: "configuration2"
+model_checkpoint_path: "configuration03"
+all_model_checkpoint_paths: "configuration03"

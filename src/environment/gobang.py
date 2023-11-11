@@ -14,18 +14,11 @@ class Environment:
         self.width = config["width"]
         self.required_pieces = config["number win pieces"]
         self.pit_number = config["number pits"]
-        # TODO: add seed!!
         self.env = Gobang_Env(width=self.width, height=self.height,
                               required_win_pieces=self.required_pieces)
         # list that accumulates all actions taken to create on trajectory
         self.action_acc = []
         self.reset_env()
-    
-
-    def reset_env(self, seed=1):
-        self.env.reset()
-        self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
-        self.action_acc = []
     
     
     def execute_step(self, action):
@@ -130,6 +123,16 @@ class Environment:
                 self.new_agent_wins += 1
         print("Finished pitting.")
         return self.new_agent_wins, self.old_agent_wins, self.draws
+    
+
+    def reset_env(self):
+        self.env.board = np.zeros((self.height, self.width))
+        self.env.player = 0
+        self.env.reward = 0
+        self.env.legal_actions = self.env.get_legal_actions()
+        self.env.terminal = False
+        self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
+        self.action_acc = []
 
 
     def create_copy(self):
@@ -304,14 +307,6 @@ class Gobang_Env:
         if check_diagonals(self.board): return True
         if check_diagonals(np.flipud(self.board)): return True
         return False
-
-
-    def reset(self):
-        self.board = np.zeros((self.height, self.width))
-        self.player = 0  # alternates between 0 and 1
-        self.reward = 0
-        self.legal_actions = self.get_legal_actions()
-        self.terminal = False
     
 
     def copy_env(self):
@@ -324,3 +319,16 @@ class Gobang_Env:
         return new_env
     
     
+
+class Gobang_Environment:
+    def __init__(self, config):
+        self.config = config
+        self.height = config["height"]
+        self.width = config["width"]
+        self.required_pieces = config["number win pieces"]
+        self.pit_number = config["number pits"]
+        self.env = Gobang_Env(width=self.width, height=self.height,
+                              required_win_pieces=self.required_pieces)
+        # list that accumulates all actions taken to create on trajectory
+        self.action_acc = []
+        self.reset_env()

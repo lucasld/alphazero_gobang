@@ -4,12 +4,16 @@ from collections import deque
 import numpy as np
 from random import shuffle
 import tensorflow as tf
+import pickle
+import os
 
 
 class AlphaZero:
     def __init__(self, env, nnet, alphazero_config, mcts_config):
         self.env = env
         self.nnet = nnet
+
+        self.alphazero_config = alphazero_config
 
         self.mcts_config = mcts_config
         # copy of nnet, used to compete against new network
@@ -23,6 +27,8 @@ class AlphaZero:
         # example history
         self.max_examples = alphazero_config["max example number"]
         self.example_hist = []
+        self.load_example_hist()
+
         # threshold prob at which nnet will be chosen as new network
         self.win_prob_threshold = alphazero_config["pit win threshold"]
     
@@ -45,6 +51,8 @@ class AlphaZero:
             # remove oldest example if there are to many examples
             while len(self.example_hist) > self.max_examples:
                 self.example_hist.pop(0)
+            # saving example history
+            self.save_example_hist()
             print("Example Hist Len:", len(self.example_hist))
             train_examples = []
             # shuffle examples
@@ -108,3 +116,26 @@ class AlphaZero:
             r = reward if player_i%2 else -reward
             experience_replay[player_i] = (observation, pi, r)
         return experience_replay
+    
+
+    def load_example_hist(self):
+        if "experience path" in self.alphazero_config.keys():
+            exp_path = self.alphazero_config["experience path"]
+            if os.path.exists(exp_path):
+                path = f"{exp_path}data"
+                if os.path.exists(path):
+                    # Unpickling
+                    with open(path, "rb") as fp:
+                        self.example_hist = pickle.load(fp)
+                    print("previous experience loaded!")
+            else:
+                os.makedirs(exp_path)
+                print("created directory for saving experience later..")
+    
+
+    def save_example_hist(self):
+        if "experience path" in self.alphazero_config.keys():
+            print("saving example history...")
+            path = f"{self.alphazero_config['experience path']}data"
+            with open(path, "wb") as fp:   #Pickling
+               pickle.dump(self.example_hist, fp)

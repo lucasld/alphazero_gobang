@@ -18,8 +18,6 @@ All core source code is contained within the `src/` directory, organized into sp
 
 #### `play/`
 
-#### `utils/`
-
 ### Configuration and Entry Point
 
 - **`main.py`**: The entry point for both training the model and playing the game. Includes command-line arguments to select different modes and options.
