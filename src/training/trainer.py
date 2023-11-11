@@ -35,16 +35,18 @@ class AlphaZero:
     def train(self, num_iter=1000):
         # repeat self-play-train self.num_iter times
         for i in range(num_iter):
-            print("I:", i)
+            print("Iteration:", i)
             sp_examples = deque([], maxlen=self.max_self_play_examples)
             # self-play self.num_self_play times
             for spi in range(self.num_self_play):
-                print("spi:", spi)
+                print("self play number:", spi)
                 # reset the monte carlo tree
                 self.mcts.reset()
                 new_train_examples = self.execute_episode()
                 if spi < 10:
+                    print("creating gif...", end="")
                     self.env.create_gif(f"self_play_n{spi}")
+                    print("finished.")
                 sp_examples += new_train_examples
             # add self play examples to example hist
             self.example_hist.append(sp_examples)
@@ -84,11 +86,15 @@ class AlphaZero:
             pmcts = MCTS(self.env, self.pnet, self.mcts_config)
             
             # pit new policies against each other
-            n_wins, p_wins, draws = self.env.pit(
-                nmcts,
-                pmcts
-            )
-            print(n_wins, p_wins, draws)
+            new_network_has_won = self.env.pit(nmcts, pmcts, self.win_prob_threshold)
+            if new_network_has_won:
+                print("Saving new network!!")
+                self.nnet.save_weights()
+                self.nnet.save_model()
+            else:
+                print("Keeping old network.")
+                self.nnet.load_weights()
+            """
             if n_wins + p_wins == 0 or n_wins / (n_wins + p_wins) < self.win_prob_threshold:
                 print("Keeping old network.")
                 self.nnet.load_weights()
@@ -96,6 +102,7 @@ class AlphaZero:
                 print("Saving new network!!")
                 self.nnet.save_weights()
                 self.nnet.save_model()
+            """
 
     
     def execute_episode(self):
@@ -109,12 +116,17 @@ class AlphaZero:
             # choose action based on the policy - only legal actions
             action = np.random.choice(len(pi), p=pi)
             self.env.execute_step(action)
-
+        # assign rewards
+        for player_i, (observation, pi, _) in list(enumerate(experience_replay))[::-1]:
+            r = self.env.reward * (1 if player_i%2 else -1)
+            experience_replay[player_i] = (observation, pi, r)
+        """
         for player_i, (observation, pi, _) in enumerate(experience_replay):
             # flip player reward when looking at opponent
             reward = self.env.reward
             r = reward if player_i%2 else -reward
             experience_replay[player_i] = (observation, pi, r)
+        """
         return experience_replay
     
 

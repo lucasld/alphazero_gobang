@@ -1,6 +1,8 @@
 import numpy as np
 
 from typing import Union
+import time
+
 
 
 C = np.sqrt(2)  # ucb factor  #TODO put this somewhere else
@@ -25,7 +27,6 @@ class MCTS:
         
         self.root_node = Node(parent_node=False, p=1.0)
 
-    
     def get_action_probs(self, pit_mode=False) -> np.ndarray:
         """Gets the probabilities for each action by performing MCTS.
 
@@ -34,21 +35,30 @@ class MCTS:
         :returns: Probabilities for each action.
         :rtype: np.ndarray
         """
+        t1 = time.time()
         if pit_mode: self.reset()
+        t2 = time.time()
         for _ in range(self.num_traverses):
             env_temp = self.env.create_copy()
+            #copyt = time.time()
+            #print("copy()", copyt - t2)
             #if pit_mode: env_temp.action_acc = []
             self.search(env_temp)
+            #t2 = time.time()
+            #print("search()", t2 - copyt)
 
         #state_string = self.env.get_state_string()
         child_n = np.array([child.n for child in self.get_node(self.env).children.values()])
         move_probs = np.array(child_n) / sum(child_n)  #TODO: softmax?
+        print("get_action_probs():", time.time() - t1)
         return move_probs
     
 
     def search(self, env) -> None:
         """Performs a search in the tree starting from the current state
-        of the environment.
+        of the environment. The algorithm goes down to a leaf node and lets the neural network
+        estimate the action probs and leaf value of that node.
+        
         TODO: add type here
 
         :param env: Environment for the game.
@@ -170,6 +180,6 @@ class Node:
         :returns: Index of the best action.
         :rtype: int
         """
-        ucbs = np.array([child.ucb() for child in self.children.values()])
+        ucbs = np.array([float(child.ucb()) for child in self.children.values()])
         ucbs[mask==0] = -1
         return np.argmax(ucbs)

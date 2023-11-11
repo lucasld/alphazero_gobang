@@ -41,7 +41,8 @@ def play_human_vs_ai(config: dict) -> None:
     mcts = MCTS(env, nnet, config=config["mcts"])
 
     # Play the game against the trained AI using the specified configuration
-    play_game(env, mcts, human_first_move=False)
+    # add alphazero_config if game should be added to the experience replay
+    play_game(env, mcts, human_first_move=False, alphazero_config=config["alpha zero"])
 
 
 def main():

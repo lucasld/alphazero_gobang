@@ -4,6 +4,15 @@ from tensorflow.keras.models import Model
 import numpy as np
 import os
 
+# Check available GPUs
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    for gpu in gpus:
+        # Set memory growth for each GPU
+        tf.config.experimental.set_memory_growth(gpu, True)
+else:
+    print("No GPUs available.")
+
 
 class NeuralNetwork:
     def __init__(self, config, load_existing_model=False):
@@ -25,6 +34,8 @@ class NeuralNetwork:
             self.model = tf.keras.models.load_model(model_path)
         else:
             print("Creating new model")
+            # convert to float16 for memory saving
+            tf.keras.backend.set_floatx('float16')
             self.model = self.create_value_policy_network(self.input_shape,
                                                           self.policy_shape)
 

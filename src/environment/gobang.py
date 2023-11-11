@@ -19,6 +19,7 @@ class Environment:
         # list that accumulates all actions taken to create on trajectory
         self.action_acc = []
         self.reset_env()
+        self.action_space_size = self.width * self.height
     
     
     def execute_step(self, action):
@@ -38,7 +39,7 @@ class Environment:
         return self.terminal
 
 
-    def pit(self, new_agent, old_agent):
+    def pit(self, new_agent, old_agent, win_treshold):
         """Pits to agents against each other self.pit_number times.
         
         :param agent1: agent 1, MCTS-oject
@@ -79,7 +80,9 @@ class Environment:
                 self.execute_step(action)
                 player = int(not player)
                 i+=1
+            print("creating gif...", end="")
             self.create_gif(f"pit_n{pit_i}")
+            print("finished.")
             # flip players again to know what player made the last move
             player = int(not player)
             if self.reward == 0:
@@ -88,8 +91,21 @@ class Environment:
                 self.new_agent_wins += 1
             elif self.reward == -1:
                 self.old_agent_wins += 1
-            #add_to_count(player)
-        
+
+            # check if it is still possible for the new network to win
+            # number of rounds left in the game
+            rounds_left = self.pit_number - pit_i - 1
+            # number of wins the new network has to achieve at least to win
+            current_new_win_threshold = (self.old_agent_wins / (1 - win_treshold)) * win_treshold
+            if self.new_agent_wins + rounds_left < current_new_win_threshold:
+                print(self.new_agent_wins, self.old_agent_wins, self.draws)
+                return False
+            # check if it is still possible for the old network to win
+            current_old_win_threshold = (self.new_agent_wins / win_treshold) * (1 - win_treshold)
+            if self.old_agent_wins + rounds_left < current_old_win_threshold:
+                print(self.new_agent_wins, self.old_agent_wins, self.draws)
+                return True
+          
         # starting games with old agent
         print("old agent starting...")
         for pit_i in range(self.pit_number//2):
@@ -121,8 +137,29 @@ class Environment:
                 self.old_agent_wins += 1
             elif self.reward == -1:
                 self.new_agent_wins += 1
-        print("Finished pitting.")
-        return self.new_agent_wins, self.old_agent_wins, self.draws
+
+            # check if it is still possible for the new network to win
+            # number of rounds left in the game
+            rounds_left = self.pit_number//2 - pit_i - 1
+            # number of wins the new network has to achieve at least to win
+            current_new_win_threshold = (self.old_agent_wins / (1 - win_treshold)) * win_treshold
+            if self.new_agent_wins + rounds_left < current_new_win_threshold:
+                print(self.new_agent_wins, self.old_agent_wins, self.draws)
+                return False
+                
+            # check if it is still possible for the old network to win
+            current_old_win_threshold = (self.new_agent_wins / win_treshold) * (1 - win_treshold)
+            if self.old_agent_wins + rounds_left < current_old_win_threshold:
+                print(self.new_agent_wins, self.old_agent_wins, self.draws)
+                return True
+
+        if self.new_agent_wins + self.old_agent_wins == 0 or self.new_agent_wins / (self.new_agent_wins + self.old_agent_wins) < self.win_prob_threshold:
+            print(self.new_agent_wins, self.old_agent_wins, self.draws)
+            return False
+        else:
+            print(self.new_agent_wins, self.old_agent_wins, self.draws)
+            return True
+        #return self.new_agent_wins, self.old_agent_wins, self.draws
     
 
     def reset_env(self):
