@@ -34,22 +34,13 @@ class MCTS:
         :returns: Probabilities for each action.
         :rtype: np.ndarray
         """
-        t1 = time.time()
         if pit_mode: self.reset()
-        t2 = time.time()
+        search_env = self.env.create_copy()
         for _ in range(self.num_traverses):
-            env_temp = self.env.create_copy()
-            #copyt = time.time()
-            #print("copy()", copyt - t2)
-            #if pit_mode: env_temp.action_acc = []
-            self.search(env_temp)
-            #t2 = time.time()
-            #print("search()", t2 - copyt)
-
-        #state_string = self.env.get_state_string()
+            search_env.copy_values_over(self.env)
+            self.search(search_env)
         child_n = np.array([child.n for child in self.get_node(self.env).children.values()])
         move_probs = np.array(child_n) / sum(child_n)  #TODO: softmax?
-        print("get_action_probs():", time.time() - t1)
         return move_probs
     
 

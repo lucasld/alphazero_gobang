@@ -178,6 +178,23 @@ class Environment:
         for action in self.action_acc:
             env_copy.execute_step(action)
         return env_copy
+
+    
+    def copy_values_over(self, other_env):
+        self.config = other_env.config
+        self.height = self.config["height"]
+        self.width = self.config["width"]
+        self.required_pieces = self.config["number win pieces"]
+        self.pit_number = self.config["number pits"]
+        self.action_acc = copy.deepcopy(other_env.action_acc)
+        self.env.board = np.copy(other_env.env.board)
+        self.env.win_pieces = other_env.env.win_pieces
+        self.env.player = copy.deepcopy(other_env.env.player)
+        self.env.pieces = other_env.env.pieces
+        self.env.reward = copy.deepcopy(other_env.env.reward)
+        self.env.legal_actions = other_env.env.get_legal_actions()
+        self.env.terminal = copy.deepcopy(other_env.env.terminal)
+        self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
     
 
     def create_gif(self, name):
@@ -221,11 +238,11 @@ class Environment:
                         plt.scatter(j, i, c='white', s=1000, zorder=10)
             # add text
             fig.suptitle(f"{text[k]}")
-            #plt.text(2.5, 2.5, f"{text[i]}", fontsize=12, ha='center', va='center', color='red', zorder=20)
             # Save to buffer
             buf = io.BytesIO()
             plt.savefig(buf, format='png')
             buf.seek(0)
+            plt.close()
             images.append(imageio.imread(buf))
 
         # Create GIF
@@ -354,18 +371,3 @@ class Gobang_Env:
         new_env.legal_actions = new_env.get_legal_actions()
         new_env.terminal = new_env.is_terminal()
         return new_env
-    
-    
-
-class Gobang_Environment:
-    def __init__(self, config):
-        self.config = config
-        self.height = config["height"]
-        self.width = config["width"]
-        self.required_pieces = config["number win pieces"]
-        self.pit_number = config["number pits"]
-        self.env = Gobang_Env(width=self.width, height=self.height,
-                              required_win_pieces=self.required_pieces)
-        # list that accumulates all actions taken to create on trajectory
-        self.action_acc = []
-        self.reset_env()

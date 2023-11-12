@@ -116,9 +116,9 @@ configurations = {
         },
         "alpha zero": {
             "number iterations": 1000,
-            "number self-play": 4,
+            "number self-play": 25,
             "self play deque length": 2000,
-            "max example number": 30,
+            "max example number": 1_000_000,
             "pit win threshold": 0.55,
             "experience path": "./data/experience/config6/"
         },
@@ -137,6 +137,6 @@ configurations = {
 
 # this is the configuration that will be used when running main.py
 # for training
-TRAINING_CONFIG = configurations["config 5"]
+TRAINING_CONFIG = configurations["config 7"]
 # for playing
-PLAYING_CONFIG = configurations["config 5"]
+PLAYING_CONFIG = configurations["config 7"]

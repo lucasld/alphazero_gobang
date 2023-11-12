@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, Flatten, Dense
 from tensorflow.keras.models import Model
+from keras.utils import Sequence
 import numpy as np
 import os
 
@@ -12,6 +13,24 @@ if gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 else:
     print("No GPUs available.")
+
+
+
+class DataGenerator(Sequence):
+    def __init__(self, train_examples, batch_size):
+        self.train_examples = train_examples
+        self.batch_size = batch_size
+
+    def __len__(self):
+        return int(np.ceil(len(self.train_examples) / self.batch_size))
+
+    def __getitem__(self, idx):
+        batch = self.train_examples[idx * self.batch_size:(idx + 1) * self.batch_size]
+        input_boards, target_pis, target_vs = list(zip(*batch))
+        input_boards = np.array(input_boards)
+        target_pis = np.array(target_pis)
+        target_vs = np.array(target_vs)
+        return input_boards, [target_pis, target_vs]
 
 
 class NeuralNetwork:
@@ -38,6 +57,18 @@ class NeuralNetwork:
             tf.keras.backend.set_floatx('float16')
             self.model = self.create_value_policy_network(self.input_shape,
                                                           self.policy_shape)
+        # Create a TensorFlow session
+        sess = tf.compat.v1.Session()
+        
+        # Get the list of available devices
+        devices = sess.list_devices()
+        
+        # Check if a GPU is available
+        gpu_available = any(device.device_type == 'GPU' for device in devices)
+        if gpu_available:
+            print("GPU is available and being used.")
+        else:
+            print("GPU is not available. TensorFlow is running on CPU.")
 
 
 
@@ -88,13 +119,17 @@ class NeuralNetwork:
 
 
     def train_nnet(self, train_examples):
-        input_boards, target_pis, target_vs = list(zip(*train_examples))
-        input_boards = np.array(input_boards)
-        target_pis = np.array(target_pis)
-        target_vs = np.array(target_vs)
-        print(input_boards.shape, target_pis.shape, target_vs.shape)
-        self.model.fit(x=input_boards, y=[target_pis, target_vs],
-                      batch_size=self.batch_size, epochs=self.epochs)
+        #input_boards, target_pis, target_vs = list(zip(*train_examples))
+        #input_boards = np.array(input_boards)
+        #target_pis = np.array(target_pis)
+        #target_vs = np.array(target_vs)
+        print("Number of train examples:", len(train_examples))
+        train_generator = DataGenerator(train_examples, batch_size=self.batch_size)
+        self.model.fit_generator(generator=train_generator, epochs=self.epochs)
+
+        #print(input_boards.shape, target_pis.shape, target_vs.shape)
+        #self.model.fit(x=input_boards, y=[target_pis, target_vs],
+        #              batch_size=self.batch_size, epochs=self.epochs)
     
 
     def clone_network(self):
@@ -117,5 +152,7 @@ class NeuralNetwork:
     
 
     def __call__(self, input):
-        input = input.reshape(1, self.input_shape[0], self.input_shape[1], self.input_shape[2])
-        return self.model(input)
+        with tf.device('/GPU:0'):
+            input = input.reshape(1, self.input_shape[0], self.input_shape[1], self.input_shape[2])
+            output = self.model(input)
+        return output

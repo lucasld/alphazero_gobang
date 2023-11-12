@@ -6,6 +6,8 @@ from random import shuffle
 import tensorflow as tf
 import pickle
 import os
+from time import time
+
 
 
 class AlphaZero:
@@ -39,11 +41,11 @@ class AlphaZero:
             sp_examples = deque([], maxlen=self.max_self_play_examples)
             # self-play self.num_self_play times
             for spi in range(self.num_self_play):
-                print("self play number:", spi)
+                print(f"self play number: {spi}/{self.num_self_play}")
                 # reset the monte carlo tree
                 self.mcts.reset()
                 new_train_examples = self.execute_episode()
-                if spi < 10:
+                if spi < 0:
                     print("creating gif...", end="")
                     self.env.create_gif(f"self_play_n{spi}")
                     print("finished.")
@@ -109,6 +111,7 @@ class AlphaZero:
         experience_replay = []
         self.env.reset_env()
         # repeat until game ended
+        times = [time()]
         while not self.env.is_terminal():
             #self.env.render()
             pi = self.mcts.get_action_probs()
@@ -116,17 +119,14 @@ class AlphaZero:
             # choose action based on the policy - only legal actions
             action = np.random.choice(len(pi), p=pi)
             self.env.execute_step(action)
+            times.append(time())
+            mean_time = np.round(np.mean((np.array(times[1:]) - np.array(times[:-1]))[:-1]), 3)
+            print("\raverage move time:", mean_time, end="")
+        print()
         # assign rewards
         for player_i, (observation, pi, _) in list(enumerate(experience_replay))[::-1]:
             r = self.env.reward * (1 if player_i%2 else -1)
             experience_replay[player_i] = (observation, pi, r)
-        """
-        for player_i, (observation, pi, _) in enumerate(experience_replay):
-            # flip player reward when looking at opponent
-            reward = self.env.reward
-            r = reward if player_i%2 else -reward
-            experience_replay[player_i] = (observation, pi, r)
-        """
         return experience_replay
     
 
