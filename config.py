@@ -137,6 +137,6 @@ configurations = {
 
 # this is the configuration that will be used when running main.py
 # for training
-TRAINING_CONFIG = configurations["config 7"]
+TRAINING_CONFIG = configurations["config 5"]
 # for playing
-PLAYING_CONFIG = configurations["config 7"]
+PLAYING_CONFIG = configurations["config 5"]

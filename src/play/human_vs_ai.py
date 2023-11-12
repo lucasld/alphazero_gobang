@@ -18,6 +18,7 @@ def visualize_board(env):
             print("-"*int(len(row_list)*3.7))
     print("")
 
+
 def play_game(env, mcts, human_first_move=True, alphazero_config=None):
     replay = []
     player = "human" if human_first_move else "ai"

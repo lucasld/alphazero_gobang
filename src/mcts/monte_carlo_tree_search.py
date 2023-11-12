@@ -4,7 +4,6 @@ from typing import Union
 import time
 
 
-
 C = np.sqrt(2)  # ucb factor  #TODO put this somewhere else
 
 

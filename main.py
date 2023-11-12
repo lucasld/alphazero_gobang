@@ -26,6 +26,7 @@ def train_model(config: dict) -> None:
     num_iterations = config["alpha zero"]["number iterations"]
     trainer.train(num_iter=num_iterations)
 
+import cProfile
 
 def play_human_vs_ai(config: dict) -> None:
     """Play against the trained Alpha Zero model.
@@ -33,12 +34,16 @@ def play_human_vs_ai(config: dict) -> None:
     :param config: the dictionary containing all configutation to play a game
     :type config: dictionary
     """
+
     # initialize the environment object
     env = Environment(config["game"])
     # initialize the nnet managing object
     nnet = NeuralNetwork(config)
     # intialize mcts object
+    global mcts
     mcts = MCTS(env, nnet, config=config["mcts"])
+    # Profile the get_action_probs method
+    cProfile.run('mcts.get_action_probs()')
 
     # Play the game against the trained AI using the specified configuration
     # add alphazero_config if game should be added to the experience replay
