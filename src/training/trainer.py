@@ -40,14 +40,19 @@ class AlphaZero:
             print("Iteration:", i)
             sp_examples = deque([], maxlen=self.max_self_play_examples)
             # self-play self.num_self_play times
+            boardA = None
             for spi in range(self.num_self_play):
                 print(f"self play number: {spi}/{self.num_self_play}")
                 # reset the monte carlo tree
                 self.mcts.reset()
                 new_train_examples = self.execute_episode()
-                if spi < 0:
+                boardB = self.env.action_acc
+                if boardA:
+                    print("SAME HISTORY:", boardA == boardB)
+                boardA = boardB
+                if spi < 3:
                     print("creating gif...", end="")
-                    self.env.create_gif(f"self_play_n{spi}")
+                    self.env.create_gif(f"self_play_n{spi}", new_train_examples)
                     print("finished.")
                 sp_examples += new_train_examples
             # add self play examples to example hist
@@ -112,17 +117,19 @@ class AlphaZero:
         self.env.reset_env()
         # repeat until game ended
         times = [time()]
+        pi = self.mcts.get_action_probs()
+        experience_replay.append((np.copy(self.env.board), pi, None))
         while not self.env.is_terminal():
             #self.env.render()
-            pi = self.mcts.get_action_probs()
-            experience_replay.append((self.env.board, pi, None))
             # choose action based on the policy - only legal actions
             action = np.random.choice(len(pi), p=pi)
             self.env.execute_step(action)
             times.append(time())
             mean_time = np.round(np.mean((np.array(times[1:]) - np.array(times[:-1]))[:-1]), 3)
             print("\raverage move time:", mean_time, end="")
-        print()
+            pi = self.mcts.get_action_probs()
+            experience_replay.append((np.copy(self.env.board), pi, None))
+        print("PI", pi)
         # assign rewards
         for player_i, (observation, pi, _) in list(enumerate(experience_replay))[::-1]:
             r = self.env.reward * (1 if player_i%2 else -1)

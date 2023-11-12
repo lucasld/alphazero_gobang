@@ -123,7 +123,7 @@ configurations = {
             "experience path": "./data/experience/config6/"
         },
         "mcts": {
-            "number search traverses": 24
+            "number search traverses": 32
         },
         "neural network": {
             "batch size": 32,

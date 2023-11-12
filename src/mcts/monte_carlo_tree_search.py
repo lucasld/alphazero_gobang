@@ -37,10 +37,13 @@ class MCTS:
         if pit_mode: self.reset()
         search_env = self.env.create_copy()
         for _ in range(self.num_traverses):
-            search_env.copy_values_over(self.env)
+            #search_env.copy_values_over(self.env)
+            search_env = self.env.create_copy()
             self.search(search_env)
         child_n = np.array([child.n for child in self.get_node(self.env).children.values()])
+        print("CHLD_N", child_n)
         move_probs = np.array(child_n) / sum(child_n)  #TODO: softmax?
+        print("AP:", move_probs)
         return move_probs
     
 

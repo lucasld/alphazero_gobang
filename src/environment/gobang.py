@@ -197,18 +197,23 @@ class Environment:
         self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
     
 
-    def create_gif(self, name):
+    def create_gif(self, name, observations):
+        print(observations)
+        boards = [board for board, _, _ in observations]
+        text = [r for _, _, r in observations]
+        
+        
         env = Environment(self.config)
         env.reset_env()
 
-        boards = []
+        """boards = []
         text = []
         for a in [None] + self.action_acc:
-            text.append(str(env.env.player))
+            text.append(f"Agent Nr.:{env.env.player}"))
             if a != None:
                 env.execute_step(a)
             boards.append(copy.deepcopy(env.board))
-            text[-1] += " " + str(env.is_terminal())
+            text[-1] += f" -- Position Reward{env.is_terminal()}"""
 
         # Custom colormap: 0, 1, and 2 -> light gray
         colors = [(0.83, 0.71, 0.51), (0.83, 0.71, 0.51), (0.83, 0.71, 0.51)]  # R,G,B
@@ -248,6 +253,11 @@ class Environment:
         # Create GIF
         imageio.mimsave(f'{env.config["images folder"]}{name}.gif', images, duration=0.5)
         plt.close()
+        
+
+    def get_string_representation(self):
+        flattened_board = np.flatten(self.env.board)
+        return str(a).replace(" ", "")
 
 
 class Gobang_Env:
