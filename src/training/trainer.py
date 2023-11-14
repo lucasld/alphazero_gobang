@@ -120,6 +120,7 @@ class AlphaZero:
             #self.env.render()
             # choose action based on the policy - only legal actions
             pi = self.mcts.get_action_probs()  #TODO
+            
             experience_replay.append((np.copy(self.env.board), pi, None))
             # choose and perform action
             action = np.random.choice(len(pi), p=pi)

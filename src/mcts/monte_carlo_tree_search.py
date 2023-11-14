@@ -40,17 +40,17 @@ class MCTS:
         if pit_mode:
             self.reset()
         #print()
-        #print("aaa")
+        print("aaa")
         search_env = self.env.create_copy()
         for _ in range(self.num_traverses):
             #search_env.copy_values_over(self.env)
             search_env = self.env.create_copy()
             self.search(search_env)
-        #print("bbb")
+        print("bbb")
         #print()
         
         current_node = self.nodes[self.env.string_board_hist[-1]]
-        #print("CURRENT NODE", current_node)
+        print("CURRENT NODE", current_node)
         child_n = []
         for action in range(self.env.action_space_size):
             if action in current_node["children"].keys():
@@ -96,8 +96,7 @@ class MCTS:
             mask = env.env.get_legal_actions()
             action = self.get_best_action(node, mask)
             if not mask[action]:
-                pass
-                #print("ACTION NOT PART OF MASK!!!!!!!!!!!!!!!!!!!!!!!!!")
+                print("ACTION NOT PART OF MASK!!!!!!!!!!!!!!!!!!!!!!!!!")
             #print("taking action", action)
             env.execute_step(action)
         
