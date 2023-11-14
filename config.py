@@ -132,11 +132,68 @@ configurations = {
             "weight path": "./data/models_and_weights/",
             "architecture": [("conv", 32), ("conv", 32), ("dense", 64), ("dense", 32), ("dense", 16)]
         }
+    },
+    "config 8": {
+        "name": "configuration08",
+        "game": {
+            "width": 5,
+            "height": 5,
+            "number win pieces": 4,
+            "images folder": "./data/visualisations/",
+            "number pits": 6
+        },
+        "alpha zero": {
+            "number iterations": 1000,
+            "number self-play": 3,
+            "self play deque length": 2000,
+            "max example number": 1_000_000,
+            "pit win threshold": 0.55,
+            "experience path": "./data/experience/"
+        },
+        "mcts": {
+            "number search traverses": 32
+        },
+        "neural network": {
+            "batch size": 32,
+            "epochs": 2,
+            "model path": "./data/models_and_weights/",
+            "weight path": "./data/models_and_weights/",
+            "architecture": [("conv", 32), ("conv", 32), ("dense", 64), ("dense", 32), ("dense", 16)]
+        }
+    },
+    "config 9": {
+        "name": "configuration09",
+        "game": {
+            "width": 5,
+            "height": 5,
+            "number win pieces": 4,
+            "images folder": "./data/visualisations/",
+            "number pits": 6,
+            "experience path": "./data/experience/dataset/"
+        },
+        "alpha zero": {
+            "number iterations": 1000,
+            "number self-play": 10,
+            "self play deque length": 4000,
+            "max example number": 5000,
+            "pit win threshold": 0.55,
+            "experience path": "./data/experience/dataset/"
+        },
+        "mcts": {
+            "number search traverses": 32
+        },
+        "neural network": {
+            "batch size": 64,
+            "epochs": 4,
+            "model path": "./data/models_and_weights/",
+            "weight path": "./data/models_and_weights/",
+            "architecture": [("conv", 16), ("conv", 16), ("dense", 8), ("dense", 32), ("dense", 16)]
+        }
     }
 }
 
 # this is the configuration that will be used when running main.py
 # for training
-TRAINING_CONFIG = configurations["config 7"]
+TRAINING_CONFIG = configurations["config 9"]
 # for playing
-PLAYING_CONFIG = configurations["config 7"]
+PLAYING_CONFIG = configurations["config 9"]

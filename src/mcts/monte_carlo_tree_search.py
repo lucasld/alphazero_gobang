@@ -2,9 +2,9 @@ import numpy as np
 
 from typing import Union
 import time
+import copy
 
-
-C = np.sqrt(2)  # ucb factor  #TODO put this somewhere else
+C = np.sqrt(4)  # ucb factor  #TODO put this somewhere else
 
 
 class MCTS:
@@ -23,8 +23,10 @@ class MCTS:
         self.env = env
         self.network = network
         self.num_traverses = config["number search traverses"]
-        
-        self.root_node = Node(parent_node=False, p=1.0)
+        # each node is identified by its board state string
+        self.nodes = {self.env.string_board_hist[-1]:
+                          {"n":0, "Q":0, "children":{}}
+                     }
 
     def get_action_probs(self, pit_mode=False) -> np.ndarray:
         """Gets the probabilities for each action by performing MCTS.
@@ -34,16 +36,41 @@ class MCTS:
         :returns: Probabilities for each action.
         :rtype: np.ndarray
         """
-        if pit_mode: self.reset()
+        #print("####"*20, "before", len(self.nodes.keys()))
+        if pit_mode:
+            self.reset()
+        #print()
+        #print("aaa")
         search_env = self.env.create_copy()
         for _ in range(self.num_traverses):
             #search_env.copy_values_over(self.env)
             search_env = self.env.create_copy()
             self.search(search_env)
-        child_n = np.array([child.n for child in self.get_node(self.env).children.values()])
-        print("CHLD_N", child_n)
-        move_probs = np.array(child_n) / sum(child_n)  #TODO: softmax?
-        print("AP:", move_probs)
+        #print("bbb")
+        #print()
+        
+        current_node = self.nodes[self.env.string_board_hist[-1]]
+        #print("CURRENT NODE", current_node)
+        child_n = []
+        for action in range(self.env.action_space_size):
+            if action in current_node["children"].keys():
+                #print("Action", action)
+                prob_and_id = current_node["children"][action]
+                if len(prob_and_id) > 1:
+                    child_n.append(self.nodes[prob_and_id[1]]["n"])
+                else:
+                    child_n.append(0)
+                #print(child_n)
+            else:
+                child_n.append(0)
+        
+        sum_child_n = sum(child_n)
+        #print("####"*20, "after", len(self.nodes.keys()))
+        if sum_child_n == 0:
+            child_n = [1/len(child_n) for _ in range(len(child_n))]
+            #print("ALL probabilites are the same")
+            return child_n
+        move_probs = np.array(child_n) / sum_child_n  #TODO: softmax?
         return move_probs
     
 
@@ -57,114 +84,58 @@ class MCTS:
         :param env: Environment for the game.
         :type env: object
         """
-        #s = env.get_state_string()
-        node = self.get_node(env)#TODO:self.root_node
+        #self.visualize_board(env)
+        #print("SEARCH")
+        node_id = env.string_board_hist[-1]
+        original_node = copy.deepcopy(node_id)
         while True:
-            if node.is_leaf_node():
+            node, node_id = self.get_node(env)
+            if self.is_leaf_node(node):
+                #print("Break")
                 break
-            # choose action with highest ucb value
-            mask = env.legal_actions
-            action = node.get_best_action(mask)
-            node = node.children[action]
+            mask = env.env.get_legal_actions()
+            action = self.get_best_action(node, mask)
+            if not mask[action]:
+                pass
+                #print("ACTION NOT PART OF MASK!!!!!!!!!!!!!!!!!!!!!!!!!")
+            #print("taking action", action)
             env.execute_step(action)
+        
         action_probs, leaf_value = self.network(env.board.reshape(1, 5, 5, 1))
         action_probs, leaf_value = np.array(action_probs[0]), leaf_value[0]
         valid_moves = np.array(env.legal_actions)
         action_probs *= valid_moves
         if not env.is_terminal():
-            node.add_children(action_probs)
-        # TODO check if leaf value has to be changed
-        node.update_Qs(-leaf_value)
-    
+            self.add_children(node_id, action_probs, valid_moves)
 
-    def reset(self) -> None:
-        """Resets the root node of the search tree."""
-        self.root_node = Node(parent_node=False, p=1.0)
+        move_hist = env.string_board_hist
+        #print("ORIGINAL NODE IN MOVE HIST" if original_node in move_hist else "...................")
+        self.update_Qs(-leaf_value, move_hist)
 
-    
     def get_node(self, env):
-        """Retrieves the node corresponding to the current state
-        of the environment.
-        TODO: add types here
-
-        :param env: Environment for the game.
-        :type env: object
-        :returns: Corresponding node in the search tree.
-        :rtype: Node object
-        """
-        n = self.root_node
-        for a in env.action_acc:
-            if a not in n.children.keys():
-                n.children[a] = Node(n, 1.0)
-            n = n.children[a]
-        return n
-
-
-class Node:
-    def __init__(self, parent_node: Union['Node', bool], p: float):
-        """Initializes a node in the search tree.
-
-        :param parent_node: Parent of the current node (False if it is
-            the root node).
-        :type parent_node: Node or bool
-        :param p: Probability associated with the action that led to this node.
-        :type p: float
-        """
-        self.Q = 0  # running average of values for all visits to this node
-        self.u = 0  # exploration term of the ucb-formula
-        self.n = 0  # number of visits to this node
-        # if this is the rood node parent_node is set to False
-        self.parent_node = parent_node
-        # as key the action and as value the child-node
-        self.children = {}
-        # action probablilites
-        self.p = p
+        state_string = env.string_board_hist[-1]
+        if state_string not in self.nodes.keys():
+            self.nodes[state_string] = {"n":0, "Q":0, "children":{}}
+            prev_state_id = env.get_previous_board_string()
+            if prev_state_id in self.nodes:
+                prev_action = env.action_acc[-1]
+                p = self.nodes[prev_state_id]["children"][prev_action]
+                if len(p) == 1:
+                    p.append(state_string)
+                    self.nodes[prev_state_id]["children"][prev_action] = p
+        return self.nodes[state_string], state_string
     
 
-    def add_children(self, probs: np.ndarray) -> None:
-        """Adds child nodes to the current node for given action probabilities.
-
-        :param probs: Probabilities associated with each action.
-        :type probs: np.ndarray
-        """
-        for action, p in enumerate(probs):
-            if action not in self.children.keys():
-                self.children[action] = Node(parent_node=self, p=p)
-    
-
-    def is_leaf_node(self) -> bool:
+    def is_leaf_node(self, node) -> bool:
         """Checks if the current node is a leaf node (has no children).
 
         :returns: True if the node is a leaf node, False otherwise.
         :rtype: bool
         """
-        return self.children == {}
+        return node["children"] == {}
     
 
-    def ucb(self) -> float:
-        """Calculates the Upper Confidence Bound (UCB) for the node.
-
-        :returns: UCB value for the node.
-        :rtype: float
-        """
-        self.u = C * self.p * np.sqrt(self.parent_node.n) / (1 + self.n)
-        return self.Q + self.u
-    
-
-    def update_Qs(self, leaf_value: int):
-        """Updates the Q-value of the current node and recursively updates
-        the parent nodes.
-
-        :param leaf_value: Value of the leaf node to update Q-values.
-        :type leaf_value: integer
-        """
-        self.n += 1
-        self.Q += (leaf_value - self.Q) / self.n
-        if self.parent_node:
-            self.parent_node.update_Qs(-leaf_value)
-    
-
-    def get_best_action(self, mask: np.ndarray) -> int:
+    def get_best_action(self, node, mask: np.ndarray) -> int:
         """Gets the best action based on the UCB values, considering
         legal actions.
 
@@ -173,6 +144,101 @@ class Node:
         :returns: Index of the best action.
         :rtype: int
         """
-        ucbs = np.array([float(child.ucb()) for child in self.children.values()])
-        ucbs[mask==0] = -1
+        ucbs = np.zeros_like(mask)
+        node_n = node["n"]  # number of times the node was visited
+        #print(node)
+        for _action, prob_child_id in node["children"].items():
+            #print("AA", _action)
+            if len(prob_child_id):
+                prob = prob_child_id[0]
+                child_n = 0
+                child_Q = 0
+            else:
+                child = self.nodes[prob_child_id[1]]
+                child_n = child["n"]
+                child_Q = child["Q"]
+            ucbs[_action] = self.ucb(child_n, child_Q, prob, node_n)        
+        ucbs[mask==0] = -np.inf
+        #print(mask, np.round(ucbs))
+        #input()
         return np.argmax(ucbs)
+    
+    
+
+    def ucb(self, node_n, node_Q, p, parent_node_n) -> float:
+        """Calculates the Upper Confidence Bound (UCB) for a node.
+
+        :param node: node for which ucb should be calculated
+        :type node: dict
+        :param p: probablity that this node was chosen from the previous node
+        :type p: float
+        :param parent_node_n: number of times parent node was called
+        :type parent_node_n: int
+        :returns: UCB value for the node.
+        :rtype: float
+        """
+        u = C * p * np.sqrt(parent_node_n) / (1 + node_n)
+        return node_Q + u
+    
+
+    '''def add_children(self, node_id, probs: np.ndarray, mask) -> None:
+        """Adds child nodes to the current node for given action probabilities.
+
+        :param probs: Probabilities associated with each action.
+        :type probs: np.ndarray
+        """
+        for action, p in enumerate(probs):
+            if mask[action] and action not in self.nodes[node_id]["children"].keys():
+                # child prototype which will later be added to self.nodes
+                child_prototype = {"Q":0, "n":0, "children":{}}
+                self.nodes[node_id]["children"][action] = [p, child_prototype]'''
+    def add_children(self, node_id, probs: np.ndarray, mask) -> None:
+        """Adds child nodes to the current node for given action probabilities.
+
+        :param probs: Probabilities associated with each action.
+        :type probs: np.ndarray
+        """
+        for action, p in enumerate(probs):
+            if mask[action]:
+                self.nodes[node_id]["children"][action] = [p]
+    
+    def update_Qs(self, leaf_value: int, move_hist: list):
+        """Updates the Q-values.
+
+        :param leaf_value: Value of the leaf node to update Q-values.
+        :type leaf_value: integer
+        """
+        #print("UPDATING")
+        #print(move_hist[0] in self.nodes.keys())
+        for node_id in move_hist[::-1]:
+            if node_id  in self.nodes.keys():
+                node = self.nodes[node_id]
+                self.nodes[node_id]["n"] += 1
+                self.nodes[node_id]["Q"] += (leaf_value - node["Q"]) / node["n"]
+            leaf_value *= -1
+
+    
+
+    def reset(self) -> None:
+        #print("MCTS reset!!!!!!!!!!!")
+        """Resets the root node of the search tree."""
+        self.nodes = {self.env.string_board_hist[-1]:
+                          {"n":0, "Q":0, "children":{}}
+                     }
+    
+
+    def visualize_board(self, env):
+        print("")
+        for row in range(env.height):
+            row_list = []
+            for e in env.board[row]:
+                if e == -1:
+                    row_list.append("X")
+                elif e == 1:
+                    row_list.append("O")
+                else:
+                    row_list.append(" ")
+            print(" | ".join(row_list))
+            if row < env.height - 1:
+                print("-"*int(len(row_list)*3.7))
+        print("")

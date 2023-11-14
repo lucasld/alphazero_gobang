@@ -6,6 +6,11 @@ from src.mcts.monte_carlo_tree_search import MCTS
 from src.model.neural_network import NeuralNetwork
 from src.play.human_vs_ai import play_game
 from src.training.trainer import AlphaZero
+from src.utils import tools
+
+
+import sys
+sys.setrecursionlimit(1_000_000)
 
 
 def train_model(config: dict) -> None:
@@ -37,7 +42,7 @@ def play_human_vs_ai(config: dict) -> None:
     # initialize the environment object
     env = Environment(config["game"])
     # initialize the nnet managing object
-    nnet = NeuralNetwork(config)
+    nnet = NeuralNetwork(config, load_existing_model=True)
     # intialize mcts object
     mcts = MCTS(env, nnet, config=config["mcts"])
     # Play the game against the trained AI using the specified configuration

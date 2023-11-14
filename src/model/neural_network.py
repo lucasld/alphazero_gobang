@@ -47,6 +47,7 @@ class NeuralNetwork:
 
         # load existing weights into model if path is given
         model_path = f"{config['neural network']['model path']}{name}.keras"
+        print(model_path)
         if os.path.exists(model_path) and load_existing_model:
             print("Old model loaded")
             #self.model.load_weights(load_weights_path)

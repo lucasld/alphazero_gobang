@@ -1,5 +1,5 @@
 from src.mcts.monte_carlo_tree_search import MCTS
-
+from src.utils import tools
 from collections import deque
 import numpy as np
 from random import shuffle
@@ -28,8 +28,9 @@ class AlphaZero:
         self.max_self_play_examples = alphazero_config["self play deque length"]
         # example history
         self.max_examples = alphazero_config["max example number"]
-        self.example_hist = []
-        self.load_example_hist()
+
+        self.exp_path = self.alphazero_config["experience path"]
+        self.example_hist = tools.load_example_hist(self.exp_path)
 
         # threshold prob at which nnet will be chosen as new network
         self.win_prob_threshold = alphazero_config["pit win threshold"]
@@ -37,31 +38,26 @@ class AlphaZero:
     def train(self, num_iter=1000):
         # repeat self-play-train self.num_iter times
         for i in range(num_iter):
+            self.example_hist = tools.load_example_hist(self.exp_path)
             print("Iteration:", i)
             sp_examples = deque([], maxlen=self.max_self_play_examples)
             # self-play self.num_self_play times
-            boardA = None
+            self.mcts.reset()
             for spi in range(self.num_self_play):
                 print(f"self play number: {spi}/{self.num_self_play}")
-                # reset the monte carlo tree
-                self.mcts.reset()
                 new_train_examples = self.execute_episode()
-                boardB = self.env.action_acc
-                if boardA:
-                    print("SAME HISTORY:", boardA == boardB)
-                boardA = boardB
                 if spi < 3:
-                    print("creating gif...", end="")
-                    self.env.create_gif(f"self_play_n{spi}", new_train_examples)
-                    print("finished.")
+                    self.env.create_gif(f"self_play_n{spi}")#, new_train_examples)
                 sp_examples += new_train_examples
             # add self play examples to example hist
             self.example_hist.append(sp_examples)
+
             # remove oldest example if there are to many examples
             while len(self.example_hist) > self.max_examples:
                 self.example_hist.pop(0)
+
             # saving example history
-            self.save_example_hist()
+            tools.save_example_hist(self.exp_path, self.example_hist)
             print("Example Hist Len:", len(self.example_hist))
             train_examples = []
             # shuffle examples
@@ -115,46 +111,26 @@ class AlphaZero:
     def execute_episode(self):
         experience_replay = []
         self.env.reset_env()
+        #self.mcts.reset()
         # repeat until game ended
         times = [time()]
-        pi = self.mcts.get_action_probs()
-        experience_replay.append((np.copy(self.env.board), pi, None))
+        #pi = self.mcts.get_action_probs()
+        #experience_replay.append((np.copy(self.env.board), pi, None))
         while not self.env.is_terminal():
             #self.env.render()
             # choose action based on the policy - only legal actions
+            pi = self.mcts.get_action_probs()  #TODO
+            experience_replay.append((np.copy(self.env.board), pi, None))
+            # choose and perform action
             action = np.random.choice(len(pi), p=pi)
             self.env.execute_step(action)
+            # timing
             times.append(time())
             mean_time = np.round(np.mean((np.array(times[1:]) - np.array(times[:-1]))[:-1]), 3)
             print("\raverage move time:", mean_time, end="")
-            pi = self.mcts.get_action_probs()
-            experience_replay.append((np.copy(self.env.board), pi, None))
-        print("PI", pi)
         # assign rewards
         for player_i, (observation, pi, _) in list(enumerate(experience_replay))[::-1]:
             r = self.env.reward * (1 if player_i%2 else -1)
             experience_replay[player_i] = (observation, pi, r)
+        print()
         return experience_replay
-    
-
-    def load_example_hist(self):
-        if "experience path" in self.alphazero_config.keys():
-            exp_path = self.alphazero_config["experience path"]
-            if os.path.exists(exp_path):
-                path = f"{exp_path}data"
-                if os.path.exists(path):
-                    # Unpickling
-                    with open(path, "rb") as fp:
-                        self.example_hist = pickle.load(fp)
-                    print("previous experience loaded!")
-            else:
-                os.makedirs(exp_path)
-                print("created directory for saving experience later..")
-    
-
-    def save_example_hist(self):
-        if "experience path" in self.alphazero_config.keys():
-            print("saving example history...")
-            path = f"{self.alphazero_config['experience path']}data"
-            with open(path, "wb") as fp:   #Pickling
-               pickle.dump(self.example_hist, fp)

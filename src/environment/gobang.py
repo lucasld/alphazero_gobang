@@ -5,6 +5,7 @@ from matplotlib.colors import ListedColormap
 import imageio
 import io
 import copy
+from src.utils import tools
 
 
 class Environment:
@@ -18,15 +19,20 @@ class Environment:
                               required_win_pieces=self.required_pieces)
         # list that accumulates all actions taken to create on trajectory
         self.action_acc = []
+        self.string_board_hist = [self.get_board_string()]
         self.reset_env()
         self.action_space_size = self.width * self.height
+        self.hist_dir_path = self.config['experience path']
     
     
     def execute_step(self, action):
+        # remeber board state string before taking step
+        # take a step in the environment
         successful = self.env.step(action)
         self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
         # add action to action accumulator
         self.action_acc.append(action)
+        self.string_board_hist.append(self.get_board_string())
         return successful
 
     
@@ -47,119 +53,93 @@ class Environment:
         :param agent2: agent 2, MCTS-oject
         :type agent2: MCTS-object"""
         print("Start pitting...")
-        agents = (new_agent, old_agent)
+        self.agents = (new_agent, old_agent)
         self.new_agent_wins, self.old_agent_wins, self.draws = 0, 0, 0
-        """def add_to_count(starting_player):
-            # add win to resictive win-counter (or draw-counter)
-            if self.reward == 0:
-                self.draws += 1
-            elif (player == 0 and self.reward == 1) or (player == 1 and self.reward == -1):
-                print("new agent won")
-                self.new_agent_wins += 1
-            elif (player == 0 and self.reward == -1) or (player == 1 and self.reward == 1):
-                print("old agent won")
-                self.old_agent_wins += 1"""
         # starting games with new agent
-        print("new agent starting...")
-        for pit_i in range(self.pit_number//2):
-            print("pit_i:", pit_i, "/", self.pit_number//2)
+        for pit_i in range(self.pit_number):
+            print("pit_i:", pit_i, "/", self.pit_number)
             # play a game between the two agents
-            player = 0
-            self.reset_env()
-            i=0
-            while not self.is_terminal():
-                #pi, _ = agents[player].network(self.board)
-                pi = agents[player].get_action_probs(pit_mode=True)
-                mask = self.legal_actions
-                masked_pi = pi
-                masked_pi[mask==0] = 0
-                # take action with highest action value
-                action = np.argmax(masked_pi)
-                if i<2:
-                    action = np.random.choice(len(self.legal_actions), p=mask/(sum(mask)))
-                self.execute_step(action)
-                player = int(not player)
-                i+=1
-            print("creating gif...", end="")
+            player = 0 if pit_i < self.pit_number//2 else 1
+            print(f"{'old' if player else 'new'} player starting the game..")
+            experience_replay = self.execute_pit(player)
+            if self.hist_dir_path:
+                tools.add_new_examples(self.hist_dir_path, experience_replay)
             self.create_gif(f"pit_n{pit_i}")
-            print("finished.")
-            # flip players again to know what player made the last move
-            player = int(not player)
-            if self.reward == 0:
-                self.draws += 1
-            elif self.reward == 1:
-                self.new_agent_wins += 1
-            elif self.reward == -1:
-                self.old_agent_wins += 1
-
+            if player == 0:
+                # adding win to respective player
+                if self.reward == 0:
+                    self.draws += 1
+                elif self.reward == 1:
+                    self.new_agent_wins += 1
+                    print("black wins!")
+                elif self.reward == -1:
+                    print("white wins")
+                    self.old_agent_wins += 1
+            else:
+                if self.reward == 0:
+                    self.draws += 1
+                elif self.reward == 1:
+                    self.old_agent_wins += 1
+                    print("black wins")
+                elif self.reward == -1:
+                    self.new_agent_wins += 1
+                    print("white wins")
+            # check if it is still possible for the new network to win
+            # number of rounds left in the game
+            rounds_left = self.pit_number//2 - pit_i - 1
+            # number of wins the new network has to achieve at least to win
             # check if it is still possible for the new network to win
             # number of rounds left in the game
             rounds_left = self.pit_number - pit_i - 1
             # number of wins the new network has to achieve at least to win
             current_new_win_threshold = (self.old_agent_wins / (1 - win_treshold)) * win_treshold
+            print(self.new_agent_wins, self.old_agent_wins, self.draws)
             if self.new_agent_wins + rounds_left < current_new_win_threshold:
-                print(self.new_agent_wins, self.old_agent_wins, self.draws)
                 return False
             # check if it is still possible for the old network to win
             current_old_win_threshold = (self.new_agent_wins / win_treshold) * (1 - win_treshold)
             if self.old_agent_wins + rounds_left < current_old_win_threshold:
-                print(self.new_agent_wins, self.old_agent_wins, self.draws)
                 return True
-          
-        # starting games with old agent
-        print("old agent starting...")
-        for pit_i in range(self.pit_number//2):
-            print("pit_i:", pit_i, "/", self.pit_number//2)
-            # play a game between the two agents
-            player = 1
-            self.reset_env()
-            i=0
-            while not self.is_terminal():
-                #pi, _ = agents[player].network(self.board)
-                pi = agents[player].get_action_probs(pit_mode=True)
-                mask = self.legal_actions
-                masked_pi = pi
-                masked_pi[mask==0] = 0
-                # take action with highest action value
-                action = np.argmax(masked_pi)
-                if i < 2:
-                    action = np.random.choice(len(self.legal_actions), p=mask/(sum(mask)))
-                self.execute_step(action)
-                player = int(not player)
-                i+=1
-            self.create_gif(f"pit_n{self.pit_number//2 + pit_i}")
-            # flip players again to know what player made the last move
-            player = int(not player)
-            #add_to_count(player)
-            if self.reward == 0:
-                self.draws += 1
-            elif self.reward == 1:
-                self.old_agent_wins += 1
-            elif self.reward == -1:
-                self.new_agent_wins += 1
-
-            # check if it is still possible for the new network to win
-            # number of rounds left in the game
-            rounds_left = self.pit_number//2 - pit_i - 1
-            # number of wins the new network has to achieve at least to win
-            current_new_win_threshold = (self.old_agent_wins / (1 - win_treshold)) * win_treshold
-            if self.new_agent_wins + rounds_left < current_new_win_threshold:
-                print(self.new_agent_wins, self.old_agent_wins, self.draws)
-                return False
-                
-            # check if it is still possible for the old network to win
-            current_old_win_threshold = (self.new_agent_wins / win_treshold) * (1 - win_treshold)
-            if self.old_agent_wins + rounds_left < current_old_win_threshold:
-                print(self.new_agent_wins, self.old_agent_wins, self.draws)
-                return True
-
+        # check who won
         if self.new_agent_wins + self.old_agent_wins == 0 or self.new_agent_wins / (self.new_agent_wins + self.old_agent_wins) < self.win_prob_threshold:
             print(self.new_agent_wins, self.old_agent_wins, self.draws)
             return False
         else:
             print(self.new_agent_wins, self.old_agent_wins, self.draws)
             return True
-        #return self.new_agent_wins, self.old_agent_wins, self.draws
+    
+
+    def execute_pit(self, player):
+        """Executing one episode between two different agents/players.
+        
+        :param player: represents the player that starts (black) with the first
+            move, either 0 or 1
+        :type player: integer
+        :returns: player that won, experience replay
+        :rtype: integer, list
+        """
+        experience_replay = []
+        self.reset_env()
+        i=0
+        while not self.is_terminal():
+            pi = self.agents[player].get_action_probs(pit_mode=True)
+            experience_replay.append((np.copy(self.env.board), pi, None))
+            #pi = np.array(pi)
+            mask = self.legal_actions
+            masked_pi = pi
+            masked_pi[mask==0] = 0
+            # take action with highest action value
+            action = np.argmax(masked_pi)
+            if i < 2:
+                action = np.random.choice(len(self.legal_actions), p=mask/(sum(mask)))
+            self.execute_step(action)
+            player = int(not player)
+            i+=1
+        # assign rewards
+        for player_i, (observation, pi, _) in list(enumerate(experience_replay))[::-1]:
+            r = self.env.reward * (1 if player_i%2 else -1)
+            experience_replay[player_i] = (observation, pi, r)
+        return experience_replay
     
 
     def reset_env(self):
@@ -170,6 +150,7 @@ class Environment:
         self.env.terminal = False
         self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
         self.action_acc = []
+        self.string_board_hist = [self.get_board_string()]
 
 
     def create_copy(self):
@@ -178,6 +159,21 @@ class Environment:
         for action in self.action_acc:
             env_copy.execute_step(action)
         return env_copy
+    
+
+    """def generate_move_hist(self):
+        env_copy = Environment(self.config)
+        hist = [env_copy.get_board_string()]
+        for action in self.action_acc:
+            env_copy.execute_step(action)
+            hist.append(env_copy.get_board_string())
+        return hist"""
+    
+    
+    def get_previous_board_string(self):
+        if len(self.string_board_hist) > 1:
+            return self.string_board_hist[-2]
+        return False
 
     
     def copy_values_over(self, other_env):
@@ -187,6 +183,7 @@ class Environment:
         self.required_pieces = self.config["number win pieces"]
         self.pit_number = self.config["number pits"]
         self.action_acc = copy.deepcopy(other_env.action_acc)
+        self.string_board_hist = copy.deepcopy(self.string_board_hist)
         self.env.board = np.copy(other_env.env.board)
         self.env.win_pieces = other_env.env.win_pieces
         self.env.player = copy.deepcopy(other_env.env.player)
@@ -197,23 +194,20 @@ class Environment:
         self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
     
 
-    def create_gif(self, name, observations):
-        print(observations)
-        boards = [board for board, _, _ in observations]
-        text = [r for _, _, r in observations]
-        
-        
+    def create_gif(self, name):#, observations):
+        #boards = [board for board, _, _ in observations]
+        #text = [r for _, _, r in observations]
         env = Environment(self.config)
         env.reset_env()
 
-        """boards = []
+        boards = []
         text = []
         for a in [None] + self.action_acc:
-            text.append(f"Agent Nr.:{env.env.player}"))
+            text.append(f"p1: {env.env.player}   ")
             if a != None:
                 env.execute_step(a)
             boards.append(copy.deepcopy(env.board))
-            text[-1] += f" -- Position Reward{env.is_terminal()}"""
+            text[-1] += f"p2: {env.env.player}   terminal: {env.is_terminal()}   r: {env.reward}"
 
         # Custom colormap: 0, 1, and 2 -> light gray
         colors = [(0.83, 0.71, 0.51), (0.83, 0.71, 0.51), (0.83, 0.71, 0.51)]  # R,G,B
@@ -255,10 +249,14 @@ class Environment:
         plt.close()
         
 
-    def get_string_representation(self):
-        flattened_board = np.flatten(self.env.board)
-        return str(a).replace(" ", "")
-
+    def get_board_string(self):
+        flattened_board = str(self.env.board.flatten())
+        # Create a translation table to remove specified characters
+        trans_table = str.maketrans("", "", " .\n[]")
+        # Apply the translation to the string
+        result = flattened_board.translate(trans_table)
+        return result
+    
 
 class Gobang_Env:
     def __init__(self, width=19, height=19, required_win_pieces=5):
@@ -278,10 +276,11 @@ class Gobang_Env:
         row = action // self.width
         column = action - (row * self.width)
         # check if action is legal
-        if not self.legal_actions[action]:
+        if not self.get_legal_actions()[action]:
             print("! Illegal Action:", action, "!")
             print(np.round(self.board))
             print(self.legal_actions.reshape((self.height, self.width)))
+            input()
             return False
         # place piece on the board
         self.board[row, column] = self.pieces[self.player]
@@ -298,7 +297,6 @@ class Gobang_Env:
         self.player = int(not self.player)
         self.legal_actions = self.get_legal_actions()
         return True
-
 
 
     def last(self):

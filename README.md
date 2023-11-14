@@ -35,3 +35,11 @@ To play against the trained AI:
 ```bash
 python main.py --play
 ```
+
+
+
+
+### TODO:
+- cleaning up code
+- writing comments
+- get model that is visibly good
