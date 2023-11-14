@@ -9,7 +9,6 @@ def load_example_hist(path):
             # Unpickling
             with open(path, "rb") as fp:
                 example_hist = pickle.load(fp)
-            print("previous experience loaded!")
             return example_hist
     #os.makedirs(path)
     #print("created directory for saving experience later..")
@@ -28,7 +27,7 @@ def save_example_hist(dir_path, example_hist):
 def add_new_examples(dir_path, new_examples):
     example_hist = load_example_hist(dir_path)
     if example_hist:
-        if len(example_hist[-1]) < 200:
+        if len(example_hist[-1]) < (len(example_hist[-2]) if len(example_hist)>2 else 200):
             example_hist[-1] += new_examples
         else:
             example_hist.append(new_examples)

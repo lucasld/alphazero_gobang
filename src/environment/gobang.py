@@ -42,7 +42,7 @@ class Environment:
         :return: if game is terminated true, else false
         :rtype: boolean
         """
-        return self.terminal
+        return self.env.is_terminal()
 
 
     def pit(self, new_agent, old_agent, win_treshold):
@@ -59,7 +59,7 @@ class Environment:
         for pit_i in range(self.pit_number):
             print("pit_i:", pit_i, "/", self.pit_number)
             # play a game between the two agents
-            player = 0 if pit_i < self.pit_number//2 else 1
+            player = 0 if pit_i%2 else 1
             print(f"{'old' if player else 'new'} player starting the game..")
             experience_replay = self.execute_pit(player)
             if self.hist_dir_path:

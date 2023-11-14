@@ -43,3 +43,5 @@ python main.py --play
 - cleaning up code
 - writing comments
 - get model that is visibly good
+- why is search always doing the same (because of the nan problem)
+- solve the nan problem

@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import pickle
+from src.utils import tools
+
 
 def visualize_board(env):
     print("")
@@ -55,31 +57,5 @@ def play_game(env, mcts, human_first_move=True, alphazero_config=None):
     
     # save replay
     if alphazero_config:
-        history = load_example_hist(alphazero_config)
-        history.append(replay)
-        save_example_hist(alphazero_config, history)
-
-
-def load_example_hist(alphazero_config):
-    if "experience path" in alphazero_config.keys():
         exp_path = alphazero_config["experience path"]
-        if os.path.exists(exp_path):
-            path = f"{exp_path}data"
-            if os.path.exists(path):
-                # Unpickling
-                with open(path, "rb") as fp:
-                    example_hist = pickle.load(fp)
-                print("previous experience loaded!")
-                return example_hist
-        else:
-            os.makedirs(exp_path)
-            print("created directory for saving experience later..")
-    
-
-def save_example_hist(alphazero_config, example_hist):
-    if "experience path" in alphazero_config.keys():
-        print("saving example history...")
-        path = f"{alphazero_config['experience path']}data"
-        with open(path, "wb") as fp:   #Pickling
-            pickle.dump(example_hist, fp)
-            
+        tools.add_new_examples(exp_path, replay)

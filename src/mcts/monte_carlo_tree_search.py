@@ -4,7 +4,7 @@ from typing import Union
 import time
 import copy
 
-C = np.sqrt(4)  # ucb factor  #TODO put this somewhere else
+C = np.sqrt(2)  # ucb factor  #TODO put this somewhere else
 
 
 class MCTS:
@@ -36,39 +36,31 @@ class MCTS:
         :returns: Probabilities for each action.
         :rtype: np.ndarray
         """
-        #print("####"*20, "before", len(self.nodes.keys()))
         if pit_mode:
             self.reset()
-        #print()
-        print("aaa")
         search_env = self.env.create_copy()
         for _ in range(self.num_traverses):
             #search_env.copy_values_over(self.env)
             search_env = self.env.create_copy()
             self.search(search_env)
-        print("bbb")
-        #print()
+        
         
         current_node = self.nodes[self.env.string_board_hist[-1]]
-        print("CURRENT NODE", current_node)
         child_n = []
         for action in range(self.env.action_space_size):
             if action in current_node["children"].keys():
-                #print("Action", action)
                 prob_and_id = current_node["children"][action]
                 if len(prob_and_id) > 1:
                     child_n.append(self.nodes[prob_and_id[1]]["n"])
                 else:
                     child_n.append(0)
-                #print(child_n)
             else:
                 child_n.append(0)
         
         sum_child_n = sum(child_n)
-        #print("####"*20, "after", len(self.nodes.keys()))
         if sum_child_n == 0:
             child_n = [1/len(child_n) for _ in range(len(child_n))]
-            #print("ALL probabilites are the same")
+            print("ALL probabilites are the same")
             return child_n
         move_probs = np.array(child_n) / sum_child_n  #TODO: softmax?
         return move_probs
@@ -96,12 +88,13 @@ class MCTS:
             mask = env.env.get_legal_actions()
             action = self.get_best_action(node, mask)
             if not mask[action]:
-                print("ACTION NOT PART OF MASK!!!!!!!!!!!!!!!!!!!!!!!!!")
+                print("ACTION NOT PART OF MASK!!!!!!!!!!!!!")
             #print("taking action", action)
             env.execute_step(action)
         
         action_probs, leaf_value = self.network(env.board.reshape(1, 5, 5, 1))
         action_probs, leaf_value = np.array(action_probs[0]), leaf_value[0]
+        #print("ACTIONPROBS", action_probs)
         valid_moves = np.array(env.legal_actions)
         action_probs *= valid_moves
         if not env.is_terminal():
@@ -113,15 +106,22 @@ class MCTS:
 
     def get_node(self, env):
         state_string = env.string_board_hist[-1]
+        prev_state_id = env.get_previous_board_string()
         if state_string not in self.nodes.keys():
             self.nodes[state_string] = {"n":0, "Q":0, "children":{}}
-            prev_state_id = env.get_previous_board_string()
             if prev_state_id in self.nodes:
                 prev_action = env.action_acc[-1]
-                p = self.nodes[prev_state_id]["children"][prev_action]
-                if len(p) == 1:
-                    p.append(state_string)
-                    self.nodes[prev_state_id]["children"][prev_action] = p
+                p_and_id = self.nodes[prev_state_id]["children"][prev_action]
+                if len(p_and_id) == 1:
+                    p_and_id.append(state_string)
+                    self.nodes[prev_state_id]["children"][prev_action] = p_and_id
+        else:
+            if prev_state_id in self.nodes:
+                prev_action = env.action_acc[-1]
+                p_and_id = self.nodes[prev_state_id]["children"][prev_action]
+                if len(p_and_id) == 1:
+                    p_and_id.append(state_string)
+                    self.nodes[prev_state_id]["children"][prev_action] = p_and_id
         return self.nodes[state_string], state_string
     
 
@@ -146,20 +146,20 @@ class MCTS:
         ucbs = np.zeros_like(mask)
         node_n = node["n"]  # number of times the node was visited
         #print(node)
-        for _action, prob_child_id in node["children"].items():
+        for action, prob_child_id in node["children"].items():
             #print("AA", _action)
-            if len(prob_child_id):
+            if len(prob_child_id) == 1:
                 prob = prob_child_id[0]
-                child_n = 0
-                child_Q = 0
+                ucbs[action] = prob * np.sqrt(node_n + 1e-8)
             else:
+                prob = prob_child_id[0]
                 child = self.nodes[prob_child_id[1]]
                 child_n = child["n"]
                 child_Q = child["Q"]
-            ucbs[_action] = self.ucb(child_n, child_Q, prob, node_n)        
+                ucbs[action] = child_Q + prob * np.sqrt(node_n) / (1 + child_n)
+
+            #ucbs[_action] = self.ucb(child_n, child_Q, prob, node_n)        
         ucbs[mask==0] = -np.inf
-        #print(mask, np.round(ucbs))
-        #input()
         return np.argmax(ucbs)
     
     
