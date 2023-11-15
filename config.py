@@ -318,14 +318,14 @@ configurations = {
         },
         "alpha zero": {
             "number iterations": 10_000,
-            "number self-play": 180,
+            "number self-play": 120,
             "self play deque length": 10_000,
-            "max example number": 15,#30,
-            "pit win threshold": 0.55,
+            "max example number": 4,#30,
+            "pit win threshold": 0.51,
             "experience path": "./data/experience/dataset_3wins/"
         },
         "mcts": {
-            "number search traverses": 16
+            "number search traverses": 24
         },
         "neural network": {
             "batch size": 32,

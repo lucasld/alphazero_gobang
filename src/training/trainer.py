@@ -136,5 +136,5 @@ class AlphaZero:
         for player_i, (observation, pi, _) in experience_flipped:
             r = self.env.reward * (1 if player_i%2 else -1)
             experience_replay[player_i] = (observation, pi, r)
-        print("-")
+        print("\n-")
         return experience_replay
