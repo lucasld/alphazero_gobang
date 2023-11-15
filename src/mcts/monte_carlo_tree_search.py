@@ -1,9 +1,5 @@
 import numpy as np
 
-from typing import Union
-import time
-import copy
-
 # ucb factor
 C = np.sqrt(2)
 
