@@ -1,24 +1,5 @@
 import numpy as np
-import os
-import pickle
 from src.utils import tools
-
-
-def visualize_board(env):
-    print("")
-    for row in range(env.height):
-        row_list = []
-        for e in env.board[row]:
-            if e == -1:
-                row_list.append("X")
-            elif e == 1:
-                row_list.append("O")
-            else:
-                row_list.append(" ")
-        print(" | ".join(row_list))
-        if row < env.height - 1:
-            print("-"*int(len(row_list)*3.7))
-    print("")
 
 
 def play_game(env, mcts, human_first_move=True, alphazero_config=None):
@@ -27,7 +8,7 @@ def play_game(env, mcts, human_first_move=True, alphazero_config=None):
     env.reset_env()
     # repeat until game ended
     while not env.is_terminal():
-        visualize_board(env)
+        tools.visualize_board(env)
         if player == "ai":
             pi = mcts.get_action_probs()
             # choose action based on the policy - only legal actions

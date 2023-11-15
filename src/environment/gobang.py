@@ -1,37 +1,51 @@
 import numpy as np
-from scipy.ndimage import rotate
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-import imageio
-import io
-import copy
 from src.utils import tools
 
 
 class Environment:
     def __init__(self, config):
+        """Initializes the Gobang Environment Manager.
+        
+        :param config: configuration dictionary containing game parameters
+        :type config: dict
+        """
+        # Extracting game parameters from the configuration dictionary
         self.config = config
         self.height = config["height"]
         self.width = config["width"]
         self.required_pieces = config["number win pieces"]
         self.pit_number = config["number pits"]
+        # Initializing the Gobang environment object
         self.env = Gobang_Env(width=self.width, height=self.height,
                               required_win_pieces=self.required_pieces)
-        # list that accumulates all actions taken to create on trajectory
+        # List that accumulates all actions taken in the environment
         self.action_acc = []
+        # History of string representations of the game board
         self.string_board_hist = [self.get_board_string()]
+        # Resetting the environment to its initial state
         self.reset_env()
+        # Calculating the size of the action space
         self.action_space_size = self.width * self.height
+        # Path to the experience replay directory in the configuration
         self.hist_dir_path = self.config['experience path']
     
     
     def execute_step(self, action):
-        # remeber board state string before taking step
-        # take a step in the environment
+        """Executes a step in the Gobang environment.
+
+        :param action: the action to be taken in the environment
+        :type action: int
+        :return: True if the step was successfully executed, False otherwise
+        :rtype: bool
+        """
+        # Remember the board state string before taking the step
+        # Take a step in the environment
         successful = self.env.step(action)
+        # Update attributes with the current state of the environment
         self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
-        # add action to action accumulator
+        # Add the action to the action accumulator
         self.action_acc.append(action)
+        # Update the history of string representations of the game board
         self.string_board_hist.append(self.get_board_string())
         return successful
 
@@ -46,27 +60,37 @@ class Environment:
 
 
     def pit(self, new_agent, old_agent, win_treshold):
-        """Pits to agents against each other self.pit_number times.
-        
-        :param agent1: agent 1, MCTS-oject
-        :type agent1: MCTS-object
-        :param agent2: agent 2, MCTS-oject
-        :type agent2: MCTS-object"""
+        """Pits two agents against each other for a specified number of games.
+
+        :param new_agent: The agent representing the new network.
+        :type new_agent: function get_action_prob()
+        :param old_agent: The agent representing the old network.
+        :type old_agent: function get_action_prob()
+        :param win_threshold: The threshold for victory, value between 0 and 1.
+        :type win_threshold: float
+        :return: True if the new agent wins, False otherwise.
+        :rtype: bool
+        """
         print("Start pitting...")
+        # Set up the agents and counters for wins and draws
         self.agents = (new_agent, old_agent)
         self.new_agent_wins, self.old_agent_wins, self.draws = 0, 0, 0
-        # starting games with new agent
+        # Iterate through the specified number of games
         for pit_i in range(self.pit_number):
-            print("pit_i:", pit_i, "/", self.pit_number)
-            # play a game between the two agents
-            player = 0 if pit_i%2 else 1
-            print(f"{'old' if player else 'new'} player starting the game..")
-            experience_replay = self.execute_pit(player)
+            print("Pit number:", pit_i + 1, "/", self.pit_number)
+            # Determine which player starts the game
+            player_i = 0 if pit_i%2 else 1
+            print(f"{'old' if player_i else 'new'} player starting the game.. {player_i}")
+            # Play a game between the two agents
+            experience_replay = self.execute_pit(player_i)
+            # Add new examples to the experience replay if a path is specified
             if self.hist_dir_path:
                 tools.add_new_examples(self.hist_dir_path, experience_replay)
-            self.create_gif(f"pit_n{pit_i}")
-            if player == 0:
-                # adding win to respective player
+            # Create a gif to visualize the game
+            if pit_i < 10:
+                tools.create_gif(f"pit_n{pit_i}", self.action_acc, self.config)
+            # Update win counters based on the game outcome
+            if player_i == 0:
                 if self.reward == 0:
                     self.draws += 1
                 elif self.reward == 1:
@@ -84,58 +108,52 @@ class Environment:
                 elif self.reward == -1:
                     self.new_agent_wins += 1
                     print("white wins")
-            # check if it is still possible for the new network to win
-            # number of rounds left in the game
-            rounds_left = self.pit_number//2 - pit_i - 1
-            # number of wins the new network has to achieve at least to win
-            # check if it is still possible for the new network to win
-            # number of rounds left in the game
+            # Check if the new agent has already lost
             rounds_left = self.pit_number - pit_i - 1
-            # number of wins the new network has to achieve at least to win
             current_new_win_threshold = (self.old_agent_wins / (1 - win_treshold)) * win_treshold
             print(self.new_agent_wins, self.old_agent_wins, self.draws)
             if self.new_agent_wins + rounds_left < current_new_win_threshold:
                 return False
-            # check if it is still possible for the old network to win
+            # Check if the old agent has already lost
             current_old_win_threshold = (self.new_agent_wins / win_treshold) * (1 - win_treshold)
-            if self.old_agent_wins + rounds_left < current_old_win_threshold:
+            if self.old_agent_wins + rounds_left <= current_old_win_threshold:
                 return True
-        # check who won
-        if self.new_agent_wins + self.old_agent_wins == 0 or self.new_agent_wins / (self.new_agent_wins + self.old_agent_wins) < self.win_prob_threshold:
-            print(self.new_agent_wins, self.old_agent_wins, self.draws)
-            return False
-        else:
-            print(self.new_agent_wins, self.old_agent_wins, self.draws)
-            return True
     
 
-    def execute_pit(self, player):
-        """Executing one episode between two different agents/players.
+    def execute_pit(self, player_i):
+        """Executes one episode between two different agents/players.
         
-        :param player: represents the player that starts (black) with the first
+        :param player_i: represents the player that starts (black) with the first
             move, either 0 or 1
         :type player: integer
-        :returns: player that won, experience replay
-        :rtype: integer, list
+        :returns: experience replay
+        :rtype: list
         """
         experience_replay = []
         self.reset_env()
-        i=0
+        self.agents[player_i].reset()
+        move_count = 0
         while not self.is_terminal():
-            pi = self.agents[player].get_action_probs(pit_mode=True)
-            experience_replay.append((np.copy(self.env.board), pi, None))
-            #pi = np.array(pi)
+            # Compute action probablities by performing tree search
+            pi = self.agents[player_i].get_action_probs()
+            # Add a "neutralized" board to the experience replay (a board which
+            # is player invariant)
+            experience_replay.append((self.get_neutral_board(), pi, None))
+            # Mask pi so that only legal moves are > 0
             mask = self.legal_actions
             masked_pi = pi
             masked_pi[mask==0] = 0
-            # take action with highest action value
+            # Choose the action with the highest probability
             action = np.argmax(masked_pi)
-            if i < 2:
+            # Choose random action for the first two moves so that different
+            # games happen
+            if move_count < 2:
                 action = np.random.choice(len(self.legal_actions), p=mask/(sum(mask)))
+            # Take action
             self.execute_step(action)
-            player = int(not player)
-            i+=1
-        # assign rewards
+            player_i = int(not player_i)
+            move_count += 1
+        # Assign rewards to each player's move
         for player_i, (observation, pi, _) in list(enumerate(experience_replay))[::-1]:
             r = self.env.reward * (1 if player_i%2 else -1)
             experience_replay[player_i] = (observation, pi, r)
@@ -143,6 +161,7 @@ class Environment:
     
 
     def reset_env(self):
+        """Resets environment"""
         self.env.board = np.zeros((self.height, self.width))
         self.env.player = 0
         self.env.reward = 0
@@ -160,23 +179,21 @@ class Environment:
             env_copy.execute_step(action)
         return env_copy
     
-
-    """def generate_move_hist(self):
-        env_copy = Environment(self.config)
-        hist = [env_copy.get_board_string()]
-        for action in self.action_acc:
-            env_copy.execute_step(action)
-            hist.append(env_copy.get_board_string())
-        return hist"""
-    
     
     def get_previous_board_string(self):
+        """Retrieves the string representation of the board from the
+        previous game state.
+
+        :return: String representation of the board from the previous
+            game state, or False if not available.
+        :rtype: str or False
+        """
         if len(self.string_board_hist) > 1:
             return self.string_board_hist[-2]
         return False
 
-    
-    def copy_values_over(self, other_env):
+
+    """def copy_values_over(self, other_env):
         self.config = other_env.config
         self.height = self.config["height"]
         self.width = self.config["width"]
@@ -191,66 +208,28 @@ class Environment:
         self.env.reward = copy.deepcopy(other_env.env.reward)
         self.env.legal_actions = other_env.env.get_legal_actions()
         self.env.terminal = copy.deepcopy(other_env.env.terminal)
-        self.board, self.legal_actions, self.terminal, self.reward = self.env.last()
-    
+        self.board, self.legal_actions, self.terminal, self.reward = self.env.last()"""
 
-    def create_gif(self, name):#, observations):
-        #boards = [board for board, _, _ in observations]
-        #text = [r for _, _, r in observations]
-        env = Environment(self.config)
-        env.reset_env()
 
-        boards = []
-        text = []
-        for a in [None] + self.action_acc:
-            text.append(f"p1: {env.env.player}   ")
-            if a != None:
-                env.execute_step(a)
-            boards.append(copy.deepcopy(env.board))
-            text[-1] += f"p2: {env.env.player}   terminal: {env.is_terminal()}   r: {env.reward}"
+    def get_neutral_board(self):
+        player = self.env.player
+        player1 = self.env.board == player
+        player2 = self.env.board == int(not player)
+        empty_space = self.env.board == 0
+        board_new = np.copy(self.env.board)
+        board_new[player1] = 0
+        board_new[player2] = 1
+        board_new[empty_space] = 2
+        return board_new
 
-        # Custom colormap: 0, 1, and 2 -> light gray
-        colors = [(0.83, 0.71, 0.51), (0.83, 0.71, 0.51), (0.83, 0.71, 0.51)]  # R,G,B
-        custom_cmap = ListedColormap(colors)
-        # List to store images
-        images = []
-
-        for k, board in enumerate(boards):
-            fig, ax = plt.subplots(figsize=(5, 5))
-            cax = ax.matshow(board, cmap=custom_cmap)
-
-            # Plot lines for the grid
-            for i in range(5):
-                ax.axhline(i - 0.5, lw=1, color="black", zorder=5)
-                ax.axvline(i - 0.5, lw=1, color="black", zorder=5)
-
-            # Remove ticks
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-            # Plot stones
-            for i in range(5):
-                for j in range(5):
-                    if board[i, j] == 1:
-                        plt.scatter(j, i, c='black', s=1000, zorder=10)
-                    if board[i, j] == -1:
-                        plt.scatter(j, i, c='white', s=1000, zorder=10)
-            # add text
-            fig.suptitle(f"{text[k]}")
-            # Save to buffer
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png')
-            buf.seek(0)
-            plt.close()
-            images.append(imageio.imread(buf))
-
-        # Create GIF
-        imageio.mimsave(f'{env.config["images folder"]}{name}.gif', images, duration=0.5)
-        plt.close()
-        
 
     def get_board_string(self):
-        flattened_board = str(self.env.board.flatten())
+        """Returns a string representation of the board. However we dont care
+        about the player's color - the player currently playing is denoted with
+        0, the enemy pieces are denoted with 1 and empty space with 2.
+        """
+        board_new = self.get_neutral_board()
+        flattened_board = str(board_new.flatten())
         # Create a translation table to remove specified characters
         trans_table = str.maketrans("", "", " .\n[]")
         # Apply the translation to the string
@@ -260,6 +239,16 @@ class Environment:
 
 class Gobang_Env:
     def __init__(self, width=19, height=19, required_win_pieces=5):
+        """Initializes the Gobang Environment.
+
+        :param width: Width of the game board.
+        :type width: int, optional
+        :param height: Height of the game board.
+        :type height: int, optional
+        :param required_win_pieces: Number of pieces in a row/column/diagonal
+            required to win.
+        :type required_win_pieces: int, optional
+        """
         self.width, self.height = width, height
         self.board = np.zeros((height, width))
         self.win_pieces = required_win_pieces
@@ -272,20 +261,28 @@ class Gobang_Env:
 
 
     def step(self, action: int):
-        # action space is a self.width*self.height large 1 dimensional array
+        """Take a step in the Gobang environment.
+
+        :param action: The action to be taken, representing a position on the board.
+        :type action: int
+        :return: True if the step is successful, False otherwise.
+        :rtype: bool
+        """
+        # Action space is a self.width * self.height large 1-dimensional array
         row = action // self.width
         column = action - (row * self.width)
-        # check if action is legal
+        # Check if action is legal
         if not self.get_legal_actions()[action]:
             print("! Illegal Action:", action, "!")
             print(np.round(self.board))
             print(self.legal_actions.reshape((self.height, self.width)))
             input()
             return False
-        # place piece on the board
+        # Place piece on the board
         self.board[row, column] = self.pieces[self.player]
-        # remove enemy pieces if they where caught
+        # Remove enemy pieces if caught (2 pieces in between 2 pieces)
         self.remove_enemy(row, column)
+        # Update terminal and reward based on the current state
         self.terminal = self.is_terminal()
         if self.terminal:
             if self.is_draw():
@@ -294,17 +291,29 @@ class Gobang_Env:
                 self.reward = 1
             elif self.player == 1:
                 self.reward = -1
+        # Switch player and update legal actions
         self.player = int(not self.player)
         self.legal_actions = self.get_legal_actions()
         return True
 
 
     def last(self):
+        """Returns the current state information.
+
+        :return: Tuple containing the board, legal actions,
+            terminal state and reward.
+        :rtype: tuple
+        """
         return (self.board, self.legal_actions, self.terminal, self.reward)
 
 
     def get_legal_actions(self):
-        # legal moves (0's represent illegal moves, 1's represent legal moves)
+        """Returns an array representing legal moves, where 0 indicates illegal
+        moves and 1 indicates legal moves.
+
+        :return: Array representing legal actions.
+        :rtype: numpy.ndarray
+        """
         action_mask = np.zeros_like(self.board)
         # the first move of the game has to be on the center crosspoint
         if 1 not in self.board:
@@ -320,7 +329,14 @@ class Gobang_Env:
 
 
     def remove_enemy(self, row, column):
-        # check in every possible direction if removal condition is met
+        """Checks in every possible direction if the removal condition is met
+        and removes enemy pieces accordingly.
+
+        :param row: Row index of the last placed piece.
+        :type row: int
+        :param column: Column index of the last placed piece.
+        :type column: int
+        """
         player_color = self.pieces[self.player]
         directions = [(1, 0), (-1, 0),
                       (0, 1),(0, -1),
@@ -328,28 +344,32 @@ class Gobang_Env:
                       (-1, 1), (-1, -1)]
         for ydir, xdir in directions:
             y, x = row + ydir * 3, column + xdir * 3
-            if y >= 0 and y < self.height and x >= 0 and x < self.width and self.board[y, x] == player_color:
+            if 0 <= y < self.height and \
+               0 <= x < self.width and \
+               self.board[y, x] == player_color:
                 pattern = []
                 ye1, xe1 = row + ydir * 2, column + xdir * 2
                 pattern.append(self.board[ye1, xe1])
                 ye2, xe2 = row + ydir * 1, column + xdir * 1
                 pattern.append(self.board[ye2, xe2])
                 enemy_player_color = self.pieces[int(not self.player)]
-                # check if both inner pieces are from the enemy player
+                # Check if both inner pieces are from the enemy player
                 if np.all(np.array(pattern) == enemy_player_color):
-                    # remove enemy pieces
+                    # Remove enemy pieces
                     self.board[ye1, xe1] = 0
                     self.board[ye2, xe2] = 0
     
 
     def is_draw(self):
+        """Checks if a position is draw."""
         return not np.any(self.board == 0)
     
     
     def is_terminal(self):
+        """Checks if a position is terminal"""
         if self.is_draw(): return True
 
-        def check(arr):
+        def check_lines(arr):
             for y in range(arr.shape[0]):
                 for x in range(arr.shape[1]-self.win_pieces+1):
                     if abs(np.sum(arr[y, x:x+self.win_pieces])) == self.win_pieces:
@@ -364,14 +384,20 @@ class Gobang_Env:
                         return True
             return False
         
-        if check(self.board): return True
-        if check(self.board.T): return True
-        if check_diagonals(self.board): return True
-        if check_diagonals(np.flipud(self.board)): return True
-        return False
+        return any([
+            check_lines(self.board),
+            check_lines(self.board.T),
+            check_diagonals(self.board),
+            check_diagonals(np.flipud(self.board))
+        ])
     
 
     def copy_env(self):
+        """Creates a deep copy of the current game environment.
+
+        :return: New instance of the Gobang_Env class with copied state
+        :rtype: Gobang_Env-object
+        """
         new_env = Gobang_Env(self.width, self.height, self.win_pieces)
         new_env.board = np.copy(self.board)
         new_env.player = self.player

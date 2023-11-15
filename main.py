@@ -1,15 +1,13 @@
 import argparse
+import sys
 
-from config import TRAINING_CONFIG, PLAYING_CONFIG
+from config import PLAYING_CONFIG, TRAINING_CONFIG
 from src.environment.gobang import Environment
 from src.mcts.monte_carlo_tree_search import MCTS
 from src.model.neural_network import NeuralNetwork
 from src.play.human_vs_ai import play_game
 from src.training.trainer import AlphaZero
-from src.utils import tools
 
-
-import sys
 sys.setrecursionlimit(1_000_000)
 
 
@@ -20,11 +18,11 @@ def train_model(config: dict) -> None:
         training.
     :type config: dictionary
     """
-    # initialize the environment object
+    # Initialize the environment object
     env = Environment(config["game"])
-    # initialize the nnet managing object
+    # Initialize the neural network managing object
     nnet = NeuralNetwork(config, load_existing_model=True)
-    # initialize the alpha zero object
+    # Initialize the AlphaZero trainer object
     trainer = AlphaZero(env, nnet, config["alpha zero"], config["mcts"])
 
     # Train the model using the specified configuration
@@ -35,19 +33,18 @@ def train_model(config: dict) -> None:
 def play_human_vs_ai(config: dict) -> None:
     """Play against the trained Alpha Zero model.
     
-    :param config: the dictionary containing all configutation to play a game
+    :param config: the dictionary containing all configutations to play a game
     :type config: dictionary
     """
-
-    # initialize the environment object
+    # Initialize the environment object
     env = Environment(config["game"])
-    # initialize the nnet managing object
+    # Initialize the neural network managing object
     nnet = NeuralNetwork(config, load_existing_model=True)
-    # intialize mcts object
+    # Initialize the MCTS object
     mcts = MCTS(env, nnet, config=config["mcts"])
-    # Play the game against the trained AI using the specified configuration
-    # add alphazero_config if game should be added to the experience replay
-    play_game(env, mcts, human_first_move=False, alphazero_config=config["alpha zero"])
+    # Play a game against trained agent using the specified configuration
+    play_game(env, mcts, human_first_move=False,
+              alphazero_config=config["alpha zero"])
 
 
 def main():

@@ -1,0 +1,2 @@
+model_checkpoint_path: "configuration001"
+all_model_checkpoint_paths: "configuration001"
