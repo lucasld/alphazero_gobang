@@ -9,7 +9,6 @@ import imageio
 from src.environment import gobang
 
 
-
 def load_example_hist(path):
     """Load the example history from a specified path.
 

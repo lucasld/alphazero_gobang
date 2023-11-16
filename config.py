@@ -328,7 +328,7 @@ configurations = {
             "number search traverses": 32
         },
         "neural network": {
-            "freeze": False,
+            "freeze": True,
             "batch size": 32,
             "epochs": 3,
             "model path": "./data/models_and_weights/config003/",
@@ -372,20 +372,20 @@ configurations = {
             "width": 5,
             "height": 5,
             "number win pieces": 4,
-            "images folder": "./data/visualisations/config004test/",
+            "images folder": "./data/visualisations/config004/",
             "number pits": 60,
             "experience path": "./data/experience/dataset_main/"
         },
         "alpha zero": {
             "number iterations": 10_000,
-            "number self-play": 80,
+            "number self-play": 30,
             "self play deque length": 10_000,
-            "max example number": 8,#30,
+            "max example number": 4,#30,
             "pit win threshold": 0.51,
             "experience path": "./data/experience/dataset_main/"
         },
         "mcts": {
-            "number search traverses": 24
+            "number search traverses": 32
         },
         "neural network": {
             "freeze": False,
@@ -400,8 +400,8 @@ configurations = {
 
 # this is the configuration that will be used when running main.py
 # for training
-TRAINING_CONFIG = configurations["config 003"]
+TRAINING_CONFIG = configurations["config 004"]
 # for playing
-PLAYING_CONFIG = configurations["config 003 test"]
+PLAYING_CONFIG = configurations["config 004"]
 
 # Co

@@ -145,9 +145,10 @@ class Environment:
             masked_pi[mask==0] = 0
             # Choose the action with the highest probability
             action = np.argmax(masked_pi)
-            # Choose random action for the first two moves so that different
-            # games happen
-            if move_count < 2:
+            # As the previous step is always taking the action the highest
+            # probablities we take probablisitc actions for the first three
+            # steps.
+            if move_count < 3:
                 action = np.random.choice(len(self.legal_actions), p=mask/(sum(mask)))
             # Take action
             self.execute_step(action)

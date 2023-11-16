@@ -37,17 +37,6 @@ class NeuralNetwork:
         self.batch_size = config["neural network"]["batch size"]
         self.epochs = config["neural network"]["epochs"]
 
-        # Learning rate scheduler
-        """self.lr_schedule = ExponentialDecay(
-            initial_learning_rate=0.05,
-            decay_steps=1,
-            decay_rate=0.6
-        )
-        # Custom callback to print the learning rate
-        self.print_lr_callback = LambdaCallback(on_epoch_begin=\
-            lambda epoch, logs: print(f"\nLearning Rate: {self.lr_schedule(epoch)}")
-        )"""
-
         # Load existing weights into model if path is given
         model_path = f"{config['neural network']['model path']}{name}.keras"
         if os.path.exists(model_path) and load_existing_model:
@@ -100,11 +89,12 @@ class NeuralNetwork:
         value_output = Dense(1, activation='tanh', name='value_output')(x)
 
         # Create the model with input and output layers
-        model = Model(inputs=input_layer, outputs=[policy_output, value_output])
+        model = Model(inputs=input_layer,
+                      outputs=[policy_output, value_output])
 
         # Compile the model
         model.compile(
-            optimizer=tf.keras.optimizers.legacy.Adam(),#learning_rate=self.lr_schedule),
+            optimizer=tf.keras.optimizers.legacy.Adam(),
             loss={
                 'policy_output': 'categorical_crossentropy',
                 'value_output': 'mean_squared_error'
@@ -119,7 +109,7 @@ class NeuralNetwork:
     def train_nnet(self, train_examples):
         """Trains the neural network using the provided training examples.
 
-        :param train_examples: Training examples for training the neural network
+        :param train_examples: Training examples for training neural network
         :type train_examples: list
         """
         # Check if network should not be trained.
@@ -133,11 +123,11 @@ class NeuralNetwork:
         
         # Train the model using the dataset generator
         history = self.model.fit(self.dataset_generator,
-                                 epochs=self.epochs)#,
-        #                         #callbacks=[self.print_lr_callback])
-        
+                                 epochs=self.epochs)
+                
         # Save training history to a file
-        history_path = self.config["neural network"]["weight path"] + "history.json"
+        history_path = self.config["neural network"]["weight path"]
+        history_path += "history.json"
         tools.add_and_plot_history(history_path, history)
     
 

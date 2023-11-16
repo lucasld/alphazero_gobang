@@ -24,18 +24,12 @@ class MCTS:
             self.env.string_board_hist[-1]: {"n":0, "Q":0, "children":{}}
         }
 
-    def get_action_probs(self, pit_mode=False) -> np.ndarray:
+    def get_action_probs(self) -> np.ndarray:
         """Gets the probabilities for each action by performing MCTS.
 
-        :param pit_mode: Whether or not to operate in pit mode
-        :type pit_mode: bool
         :return: Probabilities for each action
         :rtype: np.ndarray
         """
-        # If in pit mode, reset the MCTS tree TODO??
-        if pit_mode:
-            self.reset()
-        
         # Perform MCTS traversals
         for _ in range(self.num_traverses):
             # Create a copy of the environment for search

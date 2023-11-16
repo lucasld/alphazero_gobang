@@ -121,7 +121,7 @@ class AlphaZero:
         # Repeat until game terminated
         while not self.env.is_terminal():
             # Choose action based on the policy - only legal actions
-            pi = self.mcts.get_action_probs()  #TODO
+            pi = self.mcts.get_action_probs()
             experience_replay.append((self.env.get_neutral_board(), pi, None))
             # Choose and perform action
             action = np.random.choice(len(pi), p=pi)

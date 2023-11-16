@@ -16,9 +16,9 @@ The Monte Carlo Tree Search (MCTS) module contains all relevant functions to cre
 #### `model/`
 The neural network model module includes a class called *NeuralNetwork* managing initialization, storage, inference and training of a neural netork and a class called *DatasetGenerator* handling preprocessing the training data.
 
-The neural network gets a single board state as input and tries to estimate the coresponding move probablities and state value. 
+The neural network gets a single board state as input and tries to estimate the coresponding move probabilities and state value. 
 - **Input:** The input shape depends on the size of the board. As each tile can be in one of three sates (player 1, player 2, empty) the input is one-hottet (width, height, 3).
-- **Output:** The move probablities are encoded in an array of shape (width*height). The two **loss-functions** being used are *categorical crossentropy* (move probablities) and *mean squared error* (state value). 
+- **Output:** The move probabilities are encoded in an array of shape (width*height). The two **loss-functions** being used are *categorical crossentropy* (move probabilities) and *mean squared error* (state value). 
 
 #### `training/`
 This module covers the training pipeline for the AlphaZero model. Everything comes together here to hopefully learn something.
