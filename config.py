@@ -320,12 +320,42 @@ configurations = {
             "number iterations": 10_000,
             "number self-play": 80,
             "self play deque length": 10_000,
-            "max example number": 4,#30,
+            "max example number": 6,#30,
             "pit win threshold": 0.51,
             "experience path": "./data/experience/dataset_3wins/"
         },
         "mcts": {
             "number search traverses": 32
+        },
+        "neural network": {
+            "freeze": False,
+            "batch size": 32,
+            "epochs": 3,
+            "model path": "./data/models_and_weights/config003/",
+            "weight path": "./data/models_and_weights/config003/",
+            "architecture": [("conv", 24), ("conv", 32), ("dense", 32), ("dense", 16)]
+        }
+    },
+    "config 003 test": {
+        "name": "configuration003test",
+        "game": {
+            "width": 4,
+            "height": 4,
+            "number win pieces": 3,
+            "images folder": "./data/visualisations/config003test/",
+            "number pits": 60,
+            "experience path": "./data/experience/dataset_3wins/"
+        },
+        "alpha zero": {
+            "number iterations": 10_000,
+            "number self-play": 80,
+            "self play deque length": 10_000,
+            "max example number": 4,#30,
+            "pit win threshold": 0.51,
+            "experience path": "./data/experience/dataset_3wins/"
+        },
+        "mcts": {
+            "number search traverses": 16
         },
         "neural network": {
             "freeze": True,
@@ -339,10 +369,10 @@ configurations = {
     "config 004": {
         "name": "configuration004",
         "game": {
-            "width": 4,
-            "height": 4,
-            "number win pieces": 3,
-            "images folder": "./data/visualisations/config004/",
+            "width": 5,
+            "height": 5,
+            "number win pieces": 4,
+            "images folder": "./data/visualisations/config004test/",
             "number pits": 60,
             "experience path": "./data/experience/dataset_main/"
         },
@@ -370,8 +400,8 @@ configurations = {
 
 # this is the configuration that will be used when running main.py
 # for training
-TRAINING_CONFIG = configurations["config 004"]
+TRAINING_CONFIG = configurations["config 003"]
 # for playing
-PLAYING_CONFIG = configurations["config 004"]
+PLAYING_CONFIG = configurations["config 003 test"]
 
 # Co
