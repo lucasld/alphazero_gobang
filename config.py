@@ -313,32 +313,65 @@ configurations = {
             "height": 4,
             "number win pieces": 3,
             "images folder": "./data/visualisations/config003/",
-            "number pits": 100,
+            "number pits": 60,
             "experience path": "./data/experience/dataset_3wins/"
         },
         "alpha zero": {
             "number iterations": 10_000,
-            "number self-play": 120,
+            "number self-play": 80,
             "self play deque length": 10_000,
             "max example number": 4,#30,
             "pit win threshold": 0.51,
             "experience path": "./data/experience/dataset_3wins/"
         },
         "mcts": {
-            "number search traverses": 24
+            "number search traverses": 32
         },
         "neural network": {
+            "freeze": True,
             "batch size": 32,
-            "epochs": 1,
+            "epochs": 3,
             "model path": "./data/models_and_weights/config003/",
             "weight path": "./data/models_and_weights/config003/",
             "architecture": [("conv", 24), ("conv", 32), ("dense", 32), ("dense", 16)]
+        }
+    },
+    "config 004": {
+        "name": "configuration004",
+        "game": {
+            "width": 4,
+            "height": 4,
+            "number win pieces": 3,
+            "images folder": "./data/visualisations/config004/",
+            "number pits": 60,
+            "experience path": "./data/experience/dataset_main/"
+        },
+        "alpha zero": {
+            "number iterations": 10_000,
+            "number self-play": 80,
+            "self play deque length": 10_000,
+            "max example number": 8,#30,
+            "pit win threshold": 0.51,
+            "experience path": "./data/experience/dataset_main/"
+        },
+        "mcts": {
+            "number search traverses": 24
+        },
+        "neural network": {
+            "freeze": False,
+            "batch size": 32,
+            "epochs": 3,
+            "model path": "./data/models_and_weights/config004/",
+            "weight path": "./data/models_and_weights/config004/",
+            "architecture": [("conv", 28), ("conv", 48), ("dense", 48), ("dense", 25)]
         }
     }
 }
 
 # this is the configuration that will be used when running main.py
 # for training
-TRAINING_CONFIG = configurations["config 003"]
+TRAINING_CONFIG = configurations["config 004"]
 # for playing
-PLAYING_CONFIG = configurations["config 003"]
+PLAYING_CONFIG = configurations["config 004"]
+
+# Co

@@ -122,6 +122,11 @@ class NeuralNetwork:
         :param train_examples: Training examples for training the neural network
         :type train_examples: list
         """
+        # Check if network should not be trained.
+        config_net = self.config['neural network']
+        if 'freeze' in config_net.keys() and config_net['freeze']:
+            print("This model is marked as frozen!")
+            return False
         # Creating dataset generator
         self.dataset_generator = DataGenerator(self.batch_size, train_examples)
         print("Number of train examples:", len(train_examples))

@@ -29,7 +29,7 @@ def play_game(env, mcts, human_first_move=True, alphazero_config=None):
             # switching player
             player = "ai"
         replay.append((env.board, pi, None))
-    visualize_board(env)
+    tools.visualize_board(env)
     
     # assign rewards
     for player_i, (observation, pi, _) in list(enumerate(replay))[::-1]:
