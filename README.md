@@ -1,5 +1,7 @@
 # AlphaZero for Gobang
 
+<img src="./data/visualisations/config004/pit_n3.gif" alt="Animated GIF" width="50%">
+
 ## Project Structure
 
 The `alphazero_gobang` project is organized into several key components to ensure modularity and maintainability. Below is an overview of the directory structure and an explanation of each component:
